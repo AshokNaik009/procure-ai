@@ -49,8 +49,8 @@ Thumbs.db
 *.log
 logs/
 
-# Environment variables (keep .env for deployment reference)
-# .env
+# Environment variables
+.env
 
 # Cache
 *.cache
