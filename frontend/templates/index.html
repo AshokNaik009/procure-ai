@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Procurement Intelligence System{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Hero Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="hero-section bg-gradient-primary text-white rounded p-5 mb-5">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h1 class="display-4 fw-bold mb-3">
+                            <i class="fas fa-search-dollar me-3"></i>
+                            Procurement Intelligence
+                        </h1>
+                        <p class="lead mb-4">
+                            AI-powered supplier discovery and market intelligence platform. 
+                            Get real-time insights, find verified suppliers, and make data-driven procurement decisions.
+                        </p>
+                        <div class="d-flex gap-3">
+                            <button class="btn btn-light btn-lg" onclick="scrollToSearch()">
+                                <i class="fas fa-search me-2"></i>
+                                Start Analysis
+                            </button>
+                            <button class="btn btn-outline-light btn-lg" onclick="showDemo()">
+                                <i class="fas fa-play me-2"></i>
+                                View Demo
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <i class="fas fa-chart-line fa-10x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mb-5">
+        <div class="col-md-3">
+            <div class="stat-card text-center">
+                <div class="stat-icon bg-primary">
+                    <i class="fas fa-building"></i>
+                </div>
+                <h3 class="stat-number" id="supplierCount">10,000+</h3>
+                <p class="stat-label">Suppliers Analyzed</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card text-center">
+                <div class="stat-icon bg-success">
+                    <i class="fas fa-chart-bar"></i>
+                </div>
+                <h3 class="stat-number" id="analysisCount">500+</h3>
+                <p class="stat-label">Market Analyses</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card text-center">
+                <div class="stat-icon bg-warning">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <h3 class="stat-number" id="avgResponseTime">3.2s</h3>
+                <p class="stat-label">Avg Response Time</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card text-center">
+                <div class="stat-icon bg-info">
+                    <i class="fas fa-star"></i>
+                </div>
+                <h3 class="stat-number" id="accuracyRate">94%</h3>
+                <p class="stat-label">Accuracy Rate</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Search Interface -->
+    <div class="row mb-5" id="searchSection">
+        <div class="col-12">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-search me-2"></i>
+                        Procurement Analysis
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form id="procurementForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="productQuery" class="form-label">
+                                        <i class="fas fa-box me-1"></i>
+                                        Product/Service
+                                    </label>
+                                    <input type="text" class="form-control" id="productQuery" 
+                                           placeholder="e.g., industrial steel, IT services, manufacturing equipment"
+                                           required>
+                                    <div class="form-text">Describe what you need to procure</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="location" class="form-label">
+                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                        Location (Optional)
+                                    </label>
+                                    <input type="text" class="form-control" id="location" 
+                                           placeholder="e.g., California, Texas, New York">
+                                    <div class="form-text">Preferred supplier location</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="category" class="form-label">
+                                        <i class="fas fa-tags me-1"></i>
+                                        Category
+                                    </label>
+                                    <select class="form-select" id="category" required>
+                                        <option value="">Select category...</option>
+                                        <option value="materials">Materials</option>
+                                        <option value="equipment">Equipment</option>
+                                        <option value="services">Services</option>
+                                        <option value="software">Software</option>
+                                        <option value="construction">Construction</option>
+                                        <option value="manufacturing">Manufacturing</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="timeline" class="form-label">
+                                        <i class="fas fa-calendar me-1"></i>
+                                        Timeline
+                                    </label>
+                                    <input type="text" class="form-control" id="timeline" 
+                                           placeholder="e.g., 30 days, Q2 2025, ASAP">
+                                    <div class="form-text">When do you need this?</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="requirements" class="form-label">
+                                <i class="fas fa-list me-1"></i>
+                                Requirements (Optional)
+                            </label>
+                            <textarea class="form-control" id="requirements" rows="3" 
+                                      placeholder="Any specific requirements, certifications, or preferences..."></textarea>
+                        </div>
+                        
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary btn-lg px-5">
+                                <i class="fas fa-search me-2"></i>
+                                Analyze Market
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="row" id="resultsSection" style="display: none;">
+        <div class="col-12">
+            <div class="card shadow-lg">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>
+                        Analysis Results
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Executive Summary -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5><i class="fas fa-clipboard-list me-2"></i>Executive Summary</h5>
+                            <div class="alert alert-info" id="executiveSummary">
+                                Analysis results will appear here...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabs for Results -->
+                    <ul class="nav nav-tabs" id="resultsTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="suppliers-tab" data-bs-toggle="tab" data-bs-target="#suppliers" type="button" role="tab">
+                                <i class="fas fa-building me-1"></i>
+                                Suppliers (<span id="supplierCount2">0</span>)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="market-tab" data-bs-toggle="tab" data-bs-target="#market" type="button" role="tab">
+                                <i class="fas fa-chart-bar me-1"></i>
+                                Market Intelligence
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="recommendations-tab" data-bs-toggle="tab" data-bs-target="#recommendations" type="button" role="tab">
+                                <i class="fas fa-lightbulb me-1"></i>
+                                Recommendations
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="resultsTabContent">
+                        <!-- Suppliers Tab -->
+                        <div class="tab-pane fade show active" id="suppliers" role="tabpanel">
+                            <div class="row mt-3" id="suppliersList">
+                                <!-- Supplier cards will be inserted here -->
+                            </div>
+                        </div>
+
+                        <!-- Market Intelligence Tab -->
+                        <div class="tab-pane fade" id="market" role="tabpanel">
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6><i class="fas fa-dollar-sign me-1"></i>Price Insights</h6>
+                                        </div>
+                                        <div class="card-body" id="priceInsights">
+                                            <!-- Price insights will be inserted here -->
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6><i class="fas fa-trending-up me-1"></i>Market Trends</h6>
+                                        </div>
+                                        <div class="card-body" id="marketTrends">
+                                            <!-- Market trends will be inserted here -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recommendations Tab -->
+                        <div class="tab-pane fade" id="recommendations" role="tabpanel">
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6><i class="fas fa-tasks me-1"></i>Next Steps</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <ul id="nextSteps" class="list-group list-group-flush">
+                                                <!-- Next steps will be inserted here -->
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6><i class="fas fa-lightbulb me-1"></i>Recommendations</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <ul id="recommendationsList" class="list-group list-group-flush">
+                                                <!-- Recommendations will be inserted here -->
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Export and Actions -->
+                    <div class="row mt-4">
+                        <div class="col-12 text-center">
+                            <button class="btn btn-outline-primary me-2" onclick="exportResults('pdf')">
+                                <i class="fas fa-file-pdf me-1"></i>
+                                Export PDF
+                            </button>
+                            <button class="btn btn-outline-success me-2" onclick="exportResults('excel')">
+                                <i class="fas fa-file-excel me-1"></i>
+                                Export Excel
+                            </button>
+                            <button class="btn btn-outline-info" onclick="shareResults()">
+                                <i class="fas fa-share me-1"></i>
+                                Share Results
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <h2 class="text-center mb-5">Why Choose Our Platform?</h2>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="feature-card text-center">
+                        <div class="feature-icon bg-primary">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h4>AI-Powered Analysis</h4>
+                        <p>Advanced AI algorithms analyze vast amounts of data to provide accurate supplier recommendations and market insights.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card text-center">
+                        <div class="feature-icon bg-success">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h4>Real-Time Results</h4>
+                        <p>Get comprehensive analysis results in under 5 seconds. No more waiting days for procurement intelligence.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="feature-card text-center">
+                        <div class="feature-icon bg-warning">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h4>Verified Suppliers</h4>
+                        <p>All suppliers go through our AI verification process to ensure reliability and credibility.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

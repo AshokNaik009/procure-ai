@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+duckduckgo-search
+groq
+google-generativeai
+pydantic
+python-multipart
+python-dotenv
+langgraph
+langchain-core
