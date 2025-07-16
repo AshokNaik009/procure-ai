@@ -4,6 +4,10 @@ from typing import List, Dict, Any, Optional
 import requests
 import re
 from urllib.parse import urlparse
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Simple in-memory cache
 search_cache = {}
@@ -36,8 +40,11 @@ class SearchService:
             self.api_key = os.getenv("BRAVE_API_KEY")
             if not self.api_key:
                 print("❌ BRAVE_API_KEY not found in environment")
+                print(f"   Available env vars: {[k for k in os.environ.keys() if 'BRAVE' in k or 'API' in k]}")
                 self.api_key = None
                 return
+            
+            print(f"✅ Found BRAVE_API_KEY: {self.api_key[:10]}...")
             
             # Brave Search API configuration
             self.base_url = "https://api.search.brave.com/res/v1"
