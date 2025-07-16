@@ -258,3 +258,72 @@ class LLMService:
                 key_factors=["Limited market data available"],
                 recommendations=["Conduct further market research"]
             )
+    
+    async def analyze_market_data(self, prompt: str) -> Dict[str, Any]:
+        """Analyze market data for competitive intelligence"""
+        try:
+            # Check cache first
+            cache_key = f"competitive:{hash(prompt)}"
+            cached_result = llm_cache_get(cache_key)
+            if cached_result:
+                print("📦 Competitive analysis cache hit")
+                return cached_result
+            
+            try:
+                print("🤖 Analyzing competitive data with Groq...")
+                response = self.groq_client.chat.completions.create(
+                    messages=[
+                        {"role": "system", "content": "You are a procurement and competitive intelligence expert. Respond with valid JSON only."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    model="llama3-8b-8192",
+                    temperature=0.3,
+                    max_tokens=1500
+                )
+                
+                llm_response = response.choices[0].message.content
+                
+                # Parse JSON response
+                json_match = re.search(r'\{.*\}', llm_response, re.DOTALL)
+                if json_match:
+                    analysis_result = json.loads(json_match.group())
+                else:
+                    raise ValueError("No valid JSON found in response")
+                    
+            except Exception as e:
+                print(f"❌ Groq error, trying Gemini: {e}")
+                try:
+                    response = self.gemini_model.generate_content(prompt)
+                    json_match = re.search(r'\{.*\}', response.text, re.DOTALL)
+                    if json_match:
+                        analysis_result = json.loads(json_match.group())
+                    else:
+                        raise ValueError("No valid JSON found in Gemini response")
+                except Exception as e2:
+                    print(f"❌ Gemini error: {e2}")
+                    raise e2
+            
+            # Cache the result
+            llm_cache_set(cache_key, analysis_result)
+            
+            return analysis_result
+            
+        except Exception as e:
+            print(f"❌ Competitive analysis failed: {e}")
+            # Return minimal fallback structure
+            return {
+                "market_average_price": None,
+                "price_variance": None,
+                "your_position": "at_market",
+                "percentile_ranking": 50,
+                "key_competitors": [],
+                "negotiation_strategy": {
+                    "suggested_counter_offer": None,
+                    "leverage_points": ["Request competitive quotes", "Negotiate payment terms"],
+                    "alternative_suppliers": ["Research additional suppliers"],
+                    "risk_factors": ["Limited market data available"],
+                    "timeline_recommendation": "Allow 2-3 weeks for thorough analysis",
+                    "opening_approach": "Start with market research presentation"
+                },
+                "market_insights": ["Limited market data available for analysis"]
+            }
