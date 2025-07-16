@@ -29,11 +29,31 @@ class SearchService:
     
     def __init__(self):
         try:
-            print("🔧 Initializing DuckDuckGo search...")
-            self.ddgs = DDGS()
-            print("✅ DuckDuckGo initialized successfully")
+            print("🔧 Initializing DuckDuckGo search with server configuration...")
+            
+            # Try different configurations for server environments
+            configurations = [
+                {"timeout": 10, "proxies": None},
+                {"timeout": 5, "proxies": None},
+                {"timeout": 15, "proxies": None}
+            ]
+            
+            self.ddgs = None
+            for i, config in enumerate(configurations):
+                try:
+                    print(f"   Trying configuration {i+1}: timeout={config['timeout']}")
+                    self.ddgs = DDGS(timeout=config['timeout'])
+                    print("✅ DuckDuckGo initialized successfully")
+                    break
+                except Exception as e:
+                    print(f"   Configuration {i+1} failed: {e}")
+                    continue
+            
+            if not self.ddgs:
+                print("❌ All DuckDuckGo configurations failed")
+                
         except Exception as e:
-            print(f"❌ DuckDuckGo initialization failed: {e}")
+            print(f"❌ DuckDuckGo initialization completely failed: {e}")
             self.ddgs = None
     
     async def search_suppliers(self, query: str, location: str = None, max_results: int = 10) -> List[Dict]:
@@ -66,54 +86,78 @@ class SearchService:
                 # Debug: Check what happens with different methods
                 print("🔧 Testing different DuckDuckGo methods:")
                 
-                # Method 1: Basic text search
-                print("   Method 1: Basic text()")
-                try:
-                    results = self.ddgs.text(search_query)
-                    print(f"   ✅ text() call succeeded, type: {type(results)}")
-                    
-                    # Convert to list
-                    results_list = list(results)
-                    print(f"   📊 Converted to list: {len(results_list)} results")
-                    
-                    # Show first result structure
-                    if results_list:
-                        first_result = results_list[0]
-                        print(f"   📋 First result type: {type(first_result)}")
-                        print(f"   📋 First result keys: {list(first_result.keys()) if isinstance(first_result, dict) else 'Not a dict'}")
-                        print(f"   📋 First result sample: {str(first_result)[:200]}...")
-                    
-                    # Process results
-                    all_results = []
-                    for i, result in enumerate(results_list[:5]):  # Limit to first 5
-                        if result and isinstance(result, dict):
-                            supplier_data = {
-                                "title": result.get("title", "").strip(),
-                                "url": result.get("href", "").strip(),
-                                "snippet": result.get("body", "").strip(),
-                                "source": self._extract_domain(result.get("href", ""))
-                            }
-                            if supplier_data["title"] and supplier_data["url"]:
-                                all_results.append(supplier_data)
-                                print(f"   ✅ Processed result {i+1}: {supplier_data['title']}")
-                    
-                    print(f"📈 Total processed results: {len(all_results)}")
-                    
-                    if all_results:
-                        # Cache and return
-                        simple_cache_set(cache_key, all_results, 1800)
-                        print(f"✅ Returning {len(all_results)} search results")
-                        return all_results
-                    else:
-                        print("❌ No valid results found - all results were empty or malformed")
-                        return []
+                # Try multiple search methods with different strategies
+                search_methods = [
+                    {"name": "Basic text()", "params": {}},
+                    {"name": "text() with region", "params": {"region": "us-en"}},
+                    {"name": "text() with safesearch", "params": {"safesearch": "moderate"}},
+                    {"name": "text() minimal", "params": {"timelimit": None}}
+                ]
                 
-                except Exception as e:
-                    print(f"   ❌ Method 1 failed: {e}")
-                    print(f"   📋 Exception type: {type(e)}")
-                    import traceback
-                    traceback.print_exc()
-                    return []
+                for method in search_methods:
+                    print(f"   Method: {method['name']}")
+                    try:
+                        # Add delay between attempts
+                        time.sleep(1)
+                        
+                        results = self.ddgs.text(search_query, **method['params'])
+                        print(f"   ✅ {method['name']} call succeeded, type: {type(results)}")
+                        
+                        # Convert to list with timeout protection
+                        results_list = []
+                        try:
+                            for i, result in enumerate(results):
+                                if i >= 5:  # Limit to prevent timeouts
+                                    break
+                                results_list.append(result)
+                                
+                        except Exception as list_error:
+                            print(f"   ⚠️ Error converting to list: {list_error}")
+                            continue
+                            
+                        print(f"   📊 Converted to list: {len(results_list)} results")
+                        
+                        # Show first result structure
+                        if results_list:
+                            first_result = results_list[0]
+                            print(f"   📋 First result type: {type(first_result)}")
+                            print(f"   📋 First result keys: {list(first_result.keys()) if isinstance(first_result, dict) else 'Not a dict'}")
+                        
+                        # Process results
+                        all_results = []
+                        for i, result in enumerate(results_list):
+                            if result and isinstance(result, dict):
+                                supplier_data = {
+                                    "title": result.get("title", "").strip(),
+                                    "url": result.get("href", "").strip(),
+                                    "snippet": result.get("body", "").strip(),
+                                    "source": self._extract_domain(result.get("href", ""))
+                                }
+                                if supplier_data["title"] and supplier_data["url"]:
+                                    all_results.append(supplier_data)
+                                    print(f"   ✅ Processed result {i+1}: {supplier_data['title']}")
+                        
+                        print(f"📈 Total processed results: {len(all_results)}")
+                        
+                        if all_results:
+                            # Cache and return
+                            simple_cache_set(cache_key, all_results, 1800)
+                            print(f"✅ Returning {len(all_results)} search results")
+                            return all_results
+                        else:
+                            print(f"   ⚠️ {method['name']} returned no valid results, trying next method...")
+                            continue
+                    
+                    except Exception as e:
+                        print(f"   ❌ {method['name']} failed: {e}")
+                        print(f"   📋 Exception type: {type(e)}")
+                        if "HTTPError" in str(type(e)):
+                            print("   🚨 HTTP Error detected - server blocking requests")
+                        continue
+                
+                # All methods failed
+                print("❌ All search methods failed - server likely blocking DuckDuckGo")
+                return []
                     
             except Exception as e:
                 print(f"❌ Search completely failed: {e}")
