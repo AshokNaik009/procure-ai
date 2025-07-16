@@ -159,20 +159,48 @@ python-dotenv       # Environment management
 
 ## 🚀 **Deployment**
 
-### **Render Deployment**
-1. Push to GitHub repository
-2. Connect to Render
-3. Set environment variables:
-   ```
-   GROQ_API_KEY=your_groq_key
-   GEMINI_API_KEY=your_gemini_key
-   ```
-4. Deploy with start command: `python main.py`
+### **Render Web Service Deployment (Docker)**
+
+#### **Step 1: Create Render Web Service**
+1. Go to https://render.com/dashboard
+2. Click "New" → "Web Service"
+3. Connect your GitHub repository: `https://github.com/AshokNaik009/procure-ai.git`
+
+#### **Step 2: Configure Service**
+```
+Name: procure-ai
+Environment: Docker
+Branch: main
+```
+
+#### **Step 3: Docker Configuration**
+Render will automatically detect your `Dockerfile` and use it for deployment.
+
+#### **Step 4: Set Environment Variables**
+```
+GROQ_API_KEY=your_actual_groq_key
+GEMINI_API_KEY=your_actual_gemini_key
+```
+
+#### **Step 5: Deploy**
+- Click "Create Web Service"
+- Wait 5-10 minutes for Docker build and deployment
+- Your app will be live at: `https://procure-ai.onrender.com`
+
+### **Why Docker for Render?**
+- **Solves dependency issues**: Avoids Rust compilation problems
+- **Consistent environment**: Same container locally and in production
+- **Better performance**: Optimized Python runtime
+- **Easier debugging**: Clear build process
 
 ### **Local Development**
 ```bash
 # Development mode with auto-reload
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# OR with Docker
+docker build -t procure-ai .
+docker run -p 8000:8000 --env-file .env procure-ai
 ```
 
 ## 🔍 **Usage Examples**
