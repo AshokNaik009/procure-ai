@@ -54,18 +54,26 @@ class SearchService:
                     # Try different search methods
                     results = []
                     try:
-                        # Primary search method
-                        results = self.ddgs.text(search_query, max_results=8, safesearch='off')
-                        print(f"📊 Primary search returned {len(results)} results")
-                    except Exception as e:
-                        print(f"⚠️ Primary search failed: {e}")
-                        # Fallback search method
+                        # Primary search method - try with different parameter combinations
                         try:
-                            results = self.ddgs.text(search_query, max_results=5)
-                            print(f"📊 Fallback search returned {len(results)} results")
-                        except Exception as e2:
-                            print(f"❌ Fallback search also failed: {e2}")
-                            continue
+                            results = list(self.ddgs.text(search_query, max_results=8, safesearch='off'))
+                            print(f"📊 Primary search returned {len(results)} results")
+                        except TypeError:
+                            # API changed - try without max_results parameter
+                            results = list(self.ddgs.text(search_query, safesearch='off'))[:8]
+                            print(f"📊 Primary search (no max_results) returned {len(results)} results")
+                        except Exception as e:
+                            print(f"⚠️ Primary search failed: {e}")
+                            # Fallback search method - basic call
+                            try:
+                                results = list(self.ddgs.text(search_query))[:5]
+                                print(f"📊 Fallback search returned {len(results)} results")
+                            except Exception as e2:
+                                print(f"❌ Fallback search also failed: {e2}")
+                                continue
+                    except Exception as e:
+                        print(f"❌ All search methods failed: {e}")
+                        continue
                     
                     # Process results
                     for result in results:
