@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procurement Intelligence System</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-layout">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">🤖</div>
+                <div>
+                    <div class="sidebar-title">ProcureAI</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">v2.0</div>
+                </div>
+            </div>
+            
+            <div class="sidebar-nav">
+                <div class="nav-item active" onclick="switchPage('dashboard')">
+                    <div class="nav-icon">📊</div>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item" onclick="switchPage('supplier-discovery')">
+                    <div class="nav-icon">🔍</div>
+                    <span>Supplier Discovery</span>
+                </div>
+                <div class="nav-item" onclick="switchPage('competitive-intelligence')">
+                    <div class="nav-icon">📈</div>
+                    <span>Market Intelligence</span>
+                </div>
+                <div class="nav-item" onclick="switchPage('analytics')">
+                    <div class="nav-icon">📋</div>
+                    <span>Analytics</span>
+                </div>
+                <div class="nav-item" onclick="switchPage('about')">
+                    <div class="nav-icon">ℹ️</div>
+                    <span>About</span>
+                </div>
+            </div>
+            
+            <div class="user-info" style="padding: var(--space-md); border-top: 1px solid var(--border-primary); margin-top: auto;">
+                <div style="display: flex; align-items: center; gap: var(--space-sm);">
+                    <div style="width: 32px; height: 32px; background: var(--gradient-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px;">🤖</div>
+                    <div>
+                        <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);">ProcureAI</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Smart Procurement</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="sidebar-toggle" onclick="toggleSidebar()">
+                <span id="sidebar-toggle-icon">←</span>
+            </div>
+        </nav>
+        
+        <div class="mobile-menu-btn" onclick="toggleMobileSidebar()">
+            ☰
+        </div>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-header">
+                <nav class="breadcrumb">
+                    <span class="breadcrumb-item">Home</span>
+                    <span>/</span>
+                    <span class="breadcrumb-item active" id="current-page">Dashboard</span>
+                </nav>
+                <h1 class="page-title" id="page-title">Procurement Intelligence Dashboard</h1>
+                <p class="page-subtitle" id="page-subtitle">AI-powered supplier discovery and competitive analysis</p>
+            </div>
+            
+            <div class="content-body">
+                <!-- Dashboard Page -->
+                <div id="dashboard-page" class="page-content active">
+                    <!-- Popular Categories Section -->
+                    <section class="popular-categories">
+                        <div class="categories-header">
+                            <h2 class="categories-title">Popular Procurement Categories</h2>
+                            <button class="btn-secondary" onclick="switchPage('supplier-discovery')">
+                                Start Custom Search →
+                            </button>
+                        </div>
+                        
+                        <div class="categories-grid">
+                            <div class="category-card" onclick="searchCategory('Raw Materials')">
+                                <div class="category-icon">🏗️</div>
+                                <div class="category-name">Raw Materials</div>
+                                <div class="category-description">Essential materials for manufacturing and production processes</div>
+                                <div class="category-examples">
+                                    <span class="category-tag">Steel</span>
+                                    <span class="category-tag">Aluminum</span>
+                                    <span class="category-tag">Plastics</span>
+                                    <span class="category-tag">Chemicals</span>
+                                </div>
+                            </div>
+                            
+                            <div class="category-card" onclick="searchCategory('Industrial Equipment')">
+                                <div class="category-icon">⚙️</div>
+                                <div class="category-name">Industrial Equipment</div>
+                                <div class="category-description">Machinery and equipment for manufacturing operations</div>
+                                <div class="category-examples">
+                                    <span class="category-tag">CNC Machines</span>
+                                    <span class="category-tag">Conveyor Systems</span>
+                                    <span class="category-tag">Pumps</span>
+                                    <span class="category-tag">Generators</span>
+                                </div>
+                            </div>
+                            
+                            <div class="category-card" onclick="searchCategory('IT Services')">
+                                <div class="category-icon">💻</div>
+                                <div class="category-name">IT Services</div>
+                                <div class="category-description">Technology solutions and digital transformation services</div>
+                                <div class="category-examples">
+                                    <span class="category-tag">Cloud Services</span>
+                                    <span class="category-tag">Software Development</span>
+                                    <span class="category-tag">IT Support</span>
+                                    <span class="category-tag">Cybersecurity</span>
+                                </div>
+                            </div>
+                            
+                            <div class="category-card" onclick="searchCategory('Construction Materials')">
+                                <div class="category-icon">🏢</div>
+                                <div class="category-name">Construction Materials</div>
+                                <div class="category-description">Building materials and construction supplies</div>
+                                <div class="category-examples">
+                                    <span class="category-tag">Concrete</span>
+                                    <span class="category-tag">Lumber</span>
+                                    <span class="category-tag">Insulation</span>
+                                    <span class="category-tag">Roofing</span>
+                                </div>
+                            </div>
+                            
+                            <div class="category-card" onclick="searchCategory('Office Supplies')">
+                                <div class="category-icon">📝</div>
+                                <div class="category-name">Office Supplies</div>
+                                <div class="category-description">Administrative and operational office requirements</div>
+                                <div class="category-examples">
+                                    <span class="category-tag">Furniture</span>
+                                    <span class="category-tag">Stationery</span>
+                                    <span class="category-tag">Electronics</span>
+                                    <span class="category-tag">Printing</span>
+                                </div>
+                            </div>
+                            
+                            <div class="category-card" onclick="searchCategory('Transportation & Logistics')">
+                                <div class="category-icon">🚚</div>
+                                <div class="category-name">Transportation & Logistics</div>
+                                <div class="category-description">Shipping, freight, and logistics services</div>
+                                <div class="category-examples">
+                                    <span class="category-tag">Freight</span>
+                                    <span class="category-tag">Warehousing</span>
+                                    <span class="category-tag">Fleet Management</span>
+                                    <span class="category-tag">Packaging</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                    
+                    <!-- Quick Search Section -->
+                    <section class="search-section">
+                        <div class="search-header">
+                            <h2 class="search-title">Quick Supplier Search</h2>
+                            <p class="search-subtitle">Get instant insights on suppliers for any product or service</p>
+                        </div>
+                        
+                        <form class="search-form" id="quickSearchForm">
+                            <div class="form-group">
+                                <label class="form-label" for="quick-search">What are you looking to procure?</label>
+                                <input type="text" id="quick-search" class="form-input" placeholder="e.g., Industrial steel, IT services, Office furniture..." required>
+                            </div>
+                            <div style="text-align: center;">
+                                <button type="submit" class="btn-primary">
+                                    🔍 Search
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+                </div>
+                
+                <!-- Supplier Discovery Page -->
+                <div id="supplier-discovery-page" class="page-content" style="display: none;">
+                    <div class="search-section">
+                        <div class="search-header">
+                            <h2 class="search-title">Advanced Supplier Discovery</h2>
+                            <p class="search-subtitle">Use our AI-powered agent to find the best suppliers for your needs</p>
+                        </div>
+                        
+                        <form class="search-form" id="procurementForm">
+                            <div class="form-group">
+                                <label class="form-label" for="query">Product/Service *</label>
+                                <input type="text" id="query" name="query" class="form-input" required 
+                                       placeholder="e.g., industrial steel, IT services, manufacturing equipment">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label" for="location">Location (Optional)</label>
+                                <input type="text" id="location" name="location" class="form-input"
+                                       placeholder="e.g., Texas, California, New York">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label class="form-label" for="category">Category</label>
+                                <select id="category" name="category" class="form-input">
+                                    <option value="">Select category...</option>
+                                    <option value="materials">Materials</option>
+                                    <option value="equipment">Equipment</option>
+                                    <option value="services">Services</option>
+                                    <option value="software">Software</option>
+                                    <option value="construction">Construction</option>
+                                    <option value="manufacturing">Manufacturing</option>
+                                </select>
+                            </div>
+                            
+                            <div style="text-align: center;">
+                                <button type="submit" class="btn-primary">
+                                    🔍 Search
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Workflow Status -->
+                    <div class="workflow-status" id="workflowStatus" style="display: none;">
+                        <div class="card" style="background: #3f433f !important;">
+                            <h3 style="color: white !important; margin-bottom: var(--space-lg);">🔄 Agent Workflow Status</h3>
+                            <div class="workflow-step" id="step1">
+                                <strong>Step 1:</strong> 🔍 Searching for suppliers...
+                            </div>
+                            <div class="workflow-step" id="step2">
+                                <strong>Step 2:</strong> 🤖 Analyzing suppliers with LLM...
+                            </div>
+                            <div class="workflow-step" id="step3">
+                                <strong>Step 3:</strong> 📊 Generating market insights...
+                            </div>
+                            <div class="workflow-step" id="step4">
+                                <strong>Step 4:</strong> 📝 Creating executive summary...
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Loading State -->
+                    <div class="loading" id="loading" style="display: none;">
+                        <div class="card" style="text-align: center;">
+                            <div class="spinner"></div>
+                            <p style="color: var(--text-secondary); margin-top: var(--space-md);">LangGraph agent is processing your request...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Results Section -->
+                    <div class="results" id="results" style="display: none;">
+                        <div class="card" id="summary" style="margin-bottom: var(--space-xl);"></div>
+                        
+                        <div class="card">
+                            <h2 style="color: var(--text-primary); margin-bottom: var(--space-lg);">📊 Suppliers Found</h2>
+                            <div class="suppliers-grid" id="suppliersGrid"></div>
+                        </div>
+                        
+                        <div class="card market-insights">
+                            <h3 style="color: #1a202c !important; margin-bottom: var(--space-lg);">📈 Market Insights</h3>
+                            <div class="insight-section">
+                                <div class="insight-title">Price Trend</div>
+                                <div id="priceTrend"></div>
+                            </div>
+                            <div class="insight-section">
+                                <div class="insight-title">Key Factors</div>
+                                <ul class="insight-list" id="keyFactors"></ul>
+                            </div>
+                            <div class="insight-section">
+                                <div class="insight-title">Recommendations</div>
+                                <ul class="insight-list" id="recommendations"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Competitive Intelligence Page -->
+                <div id="competitive-intelligence-page" class="page-content" style="display: none;">
+                    <div class="search-section">
+                        <div class="search-header">
+                            <h2 class="search-title">🎯 Competitive Analysis</h2>
+                            <p class="search-subtitle">Get market intelligence and competitive positioning insights</p>
+                        </div>
+                        
+                        <form class="search-form" id="competitiveForm">
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-lg);">
+                                <div class="form-group">
+                                    <label class="form-label" for="comp-product">Product/Service *</label>
+                                    <input type="text" id="comp-product" name="product" class="form-input" required 
+                                           placeholder="e.g., Steel pipes, CRM Software, Office chairs">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label" for="comp-quote">Your Quote (Optional)</label>
+                                    <input type="number" id="comp-quote" name="supplier_quote" step="0.01" class="form-input"
+                                           placeholder="500.00">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label" for="comp-quantity">Quantity</label>
+                                    <input type="number" id="comp-quantity" name="quantity" class="form-input"
+                                           placeholder="100">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label" for="comp-location">Location</label>
+                                    <input type="text" id="comp-location" name="location" class="form-input"
+                                           placeholder="e.g., Texas, Dubai, Global">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label" for="comp-size">Company Size</label>
+                                    <select id="comp-size" name="company_size" class="form-input">
+                                        <option value="">Select size</option>
+                                        <option value="startup">Startup (1-50 employees)</option>
+                                        <option value="sme">SME (51-500 employees)</option>
+                                        <option value="enterprise">Enterprise (500+ employees)</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label" for="comp-currency">Currency</label>
+                                    <select id="comp-currency" name="currency" class="form-input">
+                                        <option value="USD">USD</option>
+                                        <option value="EUR">EUR</option>
+                                        <option value="GBP">GBP</option>
+                                        <option value="AED">AED</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div style="text-align: center; margin-top: var(--space-xl);">
+                                <button type="submit" class="btn-primary">
+                                    📊 Analyze
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Competitive Loading State -->
+                    <div id="competitive-loading" class="card" style="display: none; text-align: center;">
+                        <div class="spinner"></div>
+                        <p style="color: var(--text-primary); margin-top: var(--space-md);">Analyzing market position...</p>
+                        <p style="color: var(--text-secondary); font-size: var(--font-size-sm);">Searching industry benchmarks</p>
+                    </div>
+                    
+                    <!-- Competitive Results -->
+                    <div id="competitive-results" style="display: none;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: var(--space-lg); margin-top: var(--space-xl);">
+                            <!-- Market Position Card -->
+                            <div class="card">
+                                <h3 class="card-title">📈 Market Position</h3>
+                                <div id="market-position-content"></div>
+                            </div>
+                            
+                            <!-- Negotiation Strategy Card -->
+                            <div class="card">
+                                <h3 class="card-title">🎯 Negotiation Strategy</h3>
+                                <div id="negotiation-strategy-content"></div>
+                            </div>
+                            
+                            <!-- Competitive Landscape Card -->
+                            <div class="card">
+                                <h3 class="card-title">🏆 Competitive Landscape</h3>
+                                <div id="competitive-landscape-content"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Analytics Page -->
+                <div id="analytics-page" class="page-content" style="display: none;">
+                    <div class="card">
+                        <h2 class="card-title">📊 Analytics Dashboard</h2>
+                        <p class="card-subtitle">Coming soon - Advanced analytics and reporting features</p>
+                    </div>
+                </div>
+                
+                <!-- About Page -->
+                <div id="about-page" class="page-content" style="display: none;">
+                    <div class="card">
+                        <h2 class="card-title">🚀 Why ProcureAI?</h2>
+                        <p class="card-subtitle">Transform your procurement process with AI-powered intelligence</p>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-lg); margin-top: var(--space-xl);">
+                            <div style="background: var(--bg-tertiary); padding: var(--space-lg); border-radius: var(--radius-lg);">
+                                <h3 style="color: var(--text-primary); margin-bottom: var(--space-md); display: flex; align-items: center; gap: var(--space-sm);">⚡ Save Time</h3>
+                                <p style="color: var(--text-secondary); line-height: 1.6;">What takes hours of manual Google searches now takes minutes. Our AI agent automatically finds suppliers, analyzes market data, and provides insights.</p>
+                                <p style="color: var(--text-accent); font-weight: 600; margin-top: var(--space-sm);">From 4+ hours to 2 minutes</p>
+                            </div>
+                            
+                            <div style="background: var(--bg-tertiary); padding: var(--space-lg); border-radius: var(--radius-lg);">
+                                <h3 style="color: var(--text-primary); margin-bottom: var(--space-md); display: flex; align-items: center; gap: var(--space-sm);">🎯 Better Results</h3>
+                                <p style="color: var(--text-secondary); line-height: 1.6;">Get structured supplier data with confidence scores, certifications, and market insights instead of random search results.</p>
+                                <p style="color: var(--text-accent); font-weight: 600; margin-top: var(--space-sm);">Structured data vs scattered results</p>
+                            </div>
+                            
+                            <div style="background: var(--bg-tertiary); padding: var(--space-lg); border-radius: var(--radius-lg);">
+                                <h3 style="color: var(--text-primary); margin-bottom: var(--space-md); display: flex; align-items: center; gap: var(--space-sm);">💡 Smart Insights</h3>
+                                <p style="color: var(--text-secondary); line-height: 1.6;">Get market trends, price analysis, and negotiation strategies automatically generated from real-time data.</p>
+                                <p style="color: var(--text-accent); font-weight: 600; margin-top: var(--space-sm);">AI-powered market intelligence</p>
+                            </div>
+                            
+                            <div style="background: var(--bg-tertiary); padding: var(--space-lg); border-radius: var(--radius-lg);">
+                                <h3 style="color: var(--text-primary); margin-bottom: var(--space-md); display: flex; align-items: center; gap: var(--space-sm);">🔄 Competitive Edge</h3>
+                                <p style="color: var(--text-secondary); line-height: 1.6;">Analyze competitor pricing, benchmark your quotes, and get negotiation strategies to secure better deals.</p>
+                                <p style="color: var(--text-accent); font-weight: 600; margin-top: var(--space-sm);">Data-driven procurement decisions</p>
+                            </div>
+                        </div>
+                        
+                        <div class="card" style="margin-top: var(--space-xl); background: var(--gradient-primary); color: white;">
+                            <h3 style="color: white; margin-bottom: var(--space-md);">📝 Example Use Cases</h3>
+                            <div style="display: grid; gap: var(--space-md);">
+                                <div style="background: rgba(255,255,255,0.1); padding: var(--space-md); border-radius: var(--radius-md);">
+                                    <strong>"Industrial Steel Suppliers"</strong> → Get 10+ verified suppliers with pricing, certifications, and market trend analysis
+                                </div>
+                                <div style="background: rgba(255,255,255,0.1); padding: var(--space-md); border-radius: var(--radius-md);">
+                                    <strong>"Office Furniture Quote Analysis"</strong> → Compare your $5,000 quote against market rates and get negotiation tips
+                                </div>
+                                <div style="background: rgba(255,255,255,0.1); padding: var(--space-md); border-radius: var(--radius-md);">
+                                    <strong>"IT Services Procurement"</strong> → Find specialized vendors with confidence scores and detailed capability analysis
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
