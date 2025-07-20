@@ -123,7 +123,7 @@ class CompetitiveIntelligenceService:
         return all_results
     
     async def _analyze_with_llm(self, market_data: List[Dict], request) -> Dict[str, Any]:
-        """Use LLM to analyze market data and generate competitive insights"""
+        """Use LLM to analyze market data and generate competitive insights with historical trends and timing intelligence"""
         
         # Prepare market data for LLM analysis
         market_snippets = []
@@ -133,9 +133,9 @@ class CompetitiveIntelligenceService:
         
         market_context = "\n".join(market_snippets)
         
-        # Build comprehensive analysis prompt
+        # Build comprehensive analysis prompt with enhanced intelligence
         analysis_prompt = f"""
-        You are a procurement and competitive intelligence expert. Analyze the following market research data for competitive benchmarking.
+        You are a procurement and competitive intelligence expert. Analyze the following market research data for comprehensive competitive benchmarking, including historical trends and market timing intelligence.
 
         PRODUCT: {request.product}
         SUPPLIER QUOTE: ${request.supplier_quote or 'Not provided'}
@@ -146,7 +146,7 @@ class CompetitiveIntelligenceService:
         MARKET RESEARCH DATA:
         {market_context}
 
-        Provide a detailed competitive analysis in the following JSON format:
+        Provide a comprehensive competitive analysis including historical trends and market timing intelligence in the following JSON format:
         {{
             "market_average_price": <estimated average price as float or null>,
             "price_variance": <percentage variance from average as float or null>,
@@ -167,6 +167,45 @@ class CompetitiveIntelligenceService:
                 "risk_factors": ["<risk1>", "<risk2>"],
                 "timeline_recommendation": "<recommended negotiation timeline>",
                 "opening_approach": "<suggested opening negotiation approach>"
+            }},
+            "historical_trends": {{
+                "price_history": [
+                    {{"month": "Jan 2024", "price": <realistic price>, "market_events": ["<relevant event>"]}},
+                    {{"month": "Feb 2024", "price": <realistic price>, "market_events": []}},
+                    {{"month": "Mar 2024", "price": <realistic price>, "market_events": ["<relevant event>"]}},
+                    {{"month": "Apr 2024", "price": <realistic price>, "market_events": []}},
+                    {{"month": "May 2024", "price": <realistic price>, "market_events": ["<relevant event>"]}},
+                    {{"month": "Jun 2024", "price": <realistic price>, "market_events": []}}
+                ],
+                "trend_analysis": {{
+                    "direction": "<upward|downward|stable>",
+                    "volatility": "<high|medium|low>",
+                    "seasonal_pattern": "<description of seasonal patterns>",
+                    "current_position": "<where we are in the cycle>"
+                }},
+                "insights": [
+                    "<historical insight 1>",
+                    "<historical insight 2>",
+                    "<historical insight 3>"
+                ]
+            }},
+            "timing_intelligence": {{
+                "recommendation": "<BUY_NOW|WAIT|MONITOR>",
+                "urgency_level": "<HIGH|MEDIUM|LOW>",
+                "price_forecast": {{
+                    "30_days": {{"direction": "<up|down|stable>", "range": "<percentage range>"}},
+                    "60_days": {{"direction": "<up|down|stable>", "range": "<percentage range>"}}
+                }},
+                "optimal_window": {{
+                    "start_date": "<timing recommendation>",
+                    "end_date": "<deadline if applicable>",
+                    "reasoning": "<explanation for timing>"
+                }},
+                "savings_opportunity": {{
+                    "amount_per_unit": "<dollar amount or range>",
+                    "total_potential": "<total savings estimate>",
+                    "risk_of_waiting": "<risk description>"
+                }}
             }},
             "market_insights": [
                 "<key market insight 1>",

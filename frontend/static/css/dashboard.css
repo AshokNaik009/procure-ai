@@ -500,6 +500,8 @@ body {
     display: inline-flex;
     align-items: center;
     gap: var(--space-sm);
+    width: 100%;
+    justify-content: center;
 }
 
 .btn-primary:hover {
@@ -531,6 +533,7 @@ body {
 /* Workflow Status */
 .workflow-status {
     margin-bottom: var(--space-xl);
+    display: none;
 }
 
 .workflow-step {
@@ -571,9 +574,24 @@ body {
     100% { transform: rotate(360deg); }
 }
 
+.loading {
+    text-align: center;
+    padding: 40px;
+    display: none;
+}
+
 /* Results Section */
 .results {
     margin-top: var(--space-xl);
+    display: none;
+}
+
+.summary {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-xl);
 }
 
 .suppliers-grid {
@@ -660,20 +678,20 @@ body {
 
 .insight-title {
     font-weight: 600;
-    color: #dbdbdb !important;
+    color: var(--text-primary) !important;
     margin-bottom: var(--space-sm);
 }
 
 .insight-list {
     list-style: none;
     padding: 0;
-    color: #2d3748 !important;
+    color: var(--text-primary) !important;
 }
 
 .insight-list li {
     padding: var(--space-xs) 0;
     border-bottom: 1px solid var(--border-primary);
-    color: #2d3748 !important;
+    color: var(--text-primary) !important;
 }
 
 .insight-list li:last-child {

@@ -1,587 +1,855 @@
-// Dashboard-specific JavaScript for Procurement Intelligence System
+// Global variables
+let workflowSteps = ['step1', 'step2', 'step3', 'step4'];
+let currentStep = 0;
+let currentAnalysisData = null;
 
-class DashboardManager {
-    constructor() {
-        this.api = new ProcurementAPI();
-        this.lastAnalysisResults = null;
-        this.init();
+// Clear/Refresh Functions
+function clearSupplierResults() {
+    // Hide results
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('workflowStatus').style.display = 'none';
+    document.getElementById('loading').style.display = 'none';
+    
+    // Clear form
+    document.getElementById('procurementForm').reset();
+    
+    // Clear results content
+    document.getElementById('summary').innerHTML = '';
+    document.getElementById('suppliersGrid').innerHTML = '';
+    document.getElementById('priceTrend').innerHTML = '';
+    document.getElementById('keyFactors').innerHTML = '';
+    document.getElementById('recommendations').innerHTML = '';
+    
+    // Reset workflow steps
+    const steps = ['step1', 'step2', 'step3', 'step4'];
+    steps.forEach(step => {
+        document.getElementById(step).className = 'workflow-step';
+    });
+    currentStep = 0;
+    currentAnalysisData = null;
+    
+    // Focus on search field
+    document.getElementById('query').focus();
+}
+
+function clearCompetitiveResults() {
+    // Hide results
+    document.getElementById('competitive-results').style.display = 'none';
+    document.getElementById('competitive-loading').style.display = 'none';
+    
+    // Clear form
+    document.getElementById('competitiveForm').reset();
+    
+    // Clear results content
+    document.getElementById('market-position-content').innerHTML = '';
+    document.getElementById('negotiation-strategy-content').innerHTML = '';
+    document.getElementById('competitive-landscape-content').innerHTML = '';
+    
+    // Clear any additional intelligence cards
+    const historicalTrendsCard = document.getElementById('historical-trends-card');
+    const timingIntelligenceCard = document.getElementById('timing-intelligence-card');
+    if (historicalTrendsCard) historicalTrendsCard.remove();
+    if (timingIntelligenceCard) timingIntelligenceCard.remove();
+    
+    // Focus on product field
+    document.querySelector('input[name="product"]').focus();
+}
+
+function exportCompetitiveResults() {
+    // Get current competitive analysis data
+    const productInput = document.querySelector('input[name="product"]').value;
+    
+    if (!productInput) {
+        alert('No analysis to export. Please run a competitive analysis first.');
+        return;
     }
+    
+    // Create a simple text export for now
+    const timestamp = new Date().toISOString();
+    const filename = `competitive-analysis-${productInput.replace(/\s+/g, '-')}-${timestamp.split('T')[0]}.txt`;
+    
+    let exportContent = `Competitive Analysis Report\n`;
+    exportContent += `Product: ${productInput}\n`;
+    exportContent += `Generated: ${new Date().toLocaleString()}\n`;
+    exportContent += `\n--- Market Position ---\n`;
+    exportContent += document.getElementById('market-position-content').innerText + '\n';
+    exportContent += `\n--- Negotiation Strategy ---\n`;
+    exportContent += document.getElementById('negotiation-strategy-content').innerText + '\n';
+    exportContent += `\n--- Competitive Landscape ---\n`;
+    exportContent += document.getElementById('competitive-landscape-content').innerText + '\n';
+    
+    const blob = new Blob([exportContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
 
-    init() {
-        this.setupEventListeners();
-        this.animateStats();
-        this.updateStats();
+// Page Navigation
+function switchPage(pageId, clickEvent) {
+    // Hide all pages
+    const pages = document.querySelectorAll('.page-content');
+    pages.forEach(page => {
+        page.style.display = 'none';
+    });
+    
+    // Remove active class from all nav items
+    const navItems = document.querySelectorAll('.nav-item');
+    navItems.forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Show selected page
+    const targetPage = document.getElementById(pageId + '-page');
+    if (targetPage) {
+        targetPage.style.display = 'block';
     }
-
-    setupEventListeners() {
-        // Form submission
-        const form = document.getElementById('procurementForm');
-        if (form) {
-            form.addEventListener('submit', (e) => this.handleFormSubmission(e));
-        }
-
-        // Real-time search suggestions
-        const productQuery = document.getElementById('productQuery');
-        if (productQuery) {
-            productQuery.addEventListener('input', debounce((e) => this.handleSearchInput(e), 300));
-        }
-
-        // Category change handler
-        const category = document.getElementById('category');
-        if (category) {
-            category.addEventListener('change', (e) => this.handleCategoryChange(e));
+    
+    // Add active class to clicked nav item
+    if (clickEvent && clickEvent.target && typeof clickEvent.target.closest === 'function') {
+        const navItem = clickEvent.target.closest('.nav-item');
+        if (navItem) {
+            navItem.classList.add('active');
         }
     }
+    
+    // Update breadcrumb and page header
+    const pageNames = {
+        'dashboard': 'Dashboard',
+        'supplier-discovery': 'Supplier Discovery',
+        'competitive-intelligence': 'Market Intelligence',
+        'analytics': 'Analytics',
+        'about': 'About'
+    };
+    
+    const pageTitles = {
+        'dashboard': 'Procurement Intelligence Dashboard',
+        'supplier-discovery': 'Advanced Supplier Discovery',
+        'competitive-intelligence': 'Competitive Market Intelligence',
+        'analytics': 'Analytics & Reporting',
+        'about': 'About ProcureAI'
+    };
+    
+    const pageSubtitles = {
+        'dashboard': 'AI-powered supplier discovery and competitive analysis',
+        'supplier-discovery': 'Find the best suppliers using our AI-powered agent',
+        'competitive-intelligence': 'Market positioning and competitive benchmarking',
+        'analytics': 'Advanced analytics and procurement insights',
+        'about': 'Learn why ProcureAI is better than manual Google searches'
+    };
+    
+    document.getElementById('current-page').textContent = pageNames[pageId] || 'Dashboard';
+    document.getElementById('page-title').textContent = pageTitles[pageId] || 'Procurement Intelligence Dashboard';
+    document.getElementById('page-subtitle').textContent = pageSubtitles[pageId] || 'AI-powered supplier discovery and competitive analysis';
+}
 
-    async handleFormSubmission(event) {
-        event.preventDefault();
+// Category Search with Dubai as default location
+function searchCategory(category) {
+    switchPage('supplier-discovery');
+    setTimeout(() => {
+        document.getElementById('query').value = category;
+        document.getElementById('location').value = 'Dubai';
+        document.getElementById('query').focus();
+    }, 100);
+}
+
+// Sidebar functionality
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const mainContent = document.querySelector('.main-content');
+    const toggleIcon = document.getElementById('sidebar-toggle-icon');
+    
+    sidebar.classList.toggle('collapsed');
+    mainContent.classList.toggle('sidebar-collapsed');
+    
+    if (sidebar.classList.contains('collapsed')) {
+        toggleIcon.textContent = '→';
+    } else {
+        toggleIcon.textContent = '←';
+    }
+}
+
+function toggleMobileSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    sidebar.classList.toggle('mobile-open');
+}
+
+// Close mobile sidebar when clicking outside
+document.addEventListener('click', function(e) {
+    const sidebar = document.querySelector('.sidebar');
+    const menuBtn = document.querySelector('.mobile-menu-btn');
+    
+    if (window.innerWidth <= 768 && 
+        !sidebar.contains(e.target) && 
+        !menuBtn.contains(e.target) && 
+        sidebar.classList.contains('mobile-open')) {
+        sidebar.classList.remove('mobile-open');
+    }
+});
+
+// Handle window resize
+window.addEventListener('resize', function() {
+    const sidebar = document.querySelector('.sidebar');
+    if (window.innerWidth > 768) {
+        sidebar.classList.remove('mobile-open');
+    }
+});
+
+// Quick Search Form
+document.getElementById('quickSearchForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const query = document.getElementById('quick-search').value;
+    if (query.trim()) {
+        switchPage('supplier-discovery');
+        setTimeout(() => {
+            document.getElementById('query').value = query;
+            document.getElementById('location').value = 'Dubai';
+            document.getElementById('procurementForm').dispatchEvent(new Event('submit'));
+        }, 100);
+    }
+});
+
+// Workflow Status Functions
+function updateWorkflowStatus() {
+    // Reset all steps
+    workflowSteps.forEach(step => {
+        document.getElementById(step).classList.remove('active', 'completed');
+    });
+    
+    // Mark completed steps
+    for (let i = 0; i < currentStep; i++) {
+        document.getElementById(workflowSteps[i]).classList.add('completed');
+    }
+    
+    // Mark current step as active
+    if (currentStep < workflowSteps.length) {
+        document.getElementById(workflowSteps[currentStep]).classList.add('active');
+    }
+}
+
+function simulateWorkflow() {
+    const interval = setInterval(() => {
+        currentStep++;
+        updateWorkflowStatus();
         
-        const formData = this.getFormData();
-        
-        if (!this.validateForm(formData)) {
-            return;
+        if (currentStep >= workflowSteps.length) {
+            clearInterval(interval);
         }
+    }, 2000);
+}
 
-        try {
-            // Show loading with progress updates
-            this.showProgressiveLoading();
+// Procurement Form Event Listener
+document.getElementById('procurementForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const query = document.getElementById('query').value;
+    const location = document.getElementById('location').value;
+    const category = document.getElementById('category').value;
+    
+    if (!query.trim()) {
+        alert('Please enter a product or service');
+        return;
+    }
+    
+    // Show workflow status
+    document.getElementById('workflowStatus').style.display = 'block';
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('results').style.display = 'none';
+    
+    const submitButton = document.querySelector('#procurementForm button[type="submit"]');
+    submitButton.disabled = true;
+    
+    // Reset workflow
+    currentStep = 0;
+    updateWorkflowStatus();
+    simulateWorkflow();
+    
+    try {
+        const response = await fetch('/analyze', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query: query,
+                location: location || null,
+                category: category || null
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Analysis failed');
+        }
+        
+        const data = await response.json();
+        displayResults(data);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        document.getElementById('workflowStatus').style.display = 'none';
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('results').innerHTML = '<div class="error">🚨 Agent workflow failed. Please try again.</div>';
+        document.getElementById('results').style.display = 'block';
+    } finally {
+        submitButton.disabled = false;
+    }
+});
+
+function displayResults(data) {
+    // Store data for export
+    currentAnalysisData = {
+        ...data,
+        query: document.getElementById('query').value,
+        location: document.getElementById('location').value
+    };
+    
+    // Hide loading and workflow status
+    document.getElementById('workflowStatus').style.display = 'none';
+    document.getElementById('loading').style.display = 'none';
+    
+    // Show summary
+    document.getElementById('summary').innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+            <h3 style="color: var(--text-primary) !important; margin: 0;">📋 Agent Analysis Summary</h3>
+            <button id="exportExcel" class="btn-secondary" onclick="exportToExcel()">
+                📊 Export to Excel
+            </button>
+        </div>
+        <p style="color: var(--text-primary) !important; margin-bottom: var(--space-md);">${data.summary}</p>
+        <p style="color: var(--text-primary) !important;"><strong>⚡ Processing Time:</strong> ${data.processing_time.toFixed(2)} seconds</p>
+        <p style="color: var(--text-primary) !important;"><strong>🏢 Suppliers Found:</strong> ${data.suppliers.length}</p>
+    `;
+    
+    // Show suppliers
+    const suppliersGrid = document.getElementById('suppliersGrid');
+    suppliersGrid.innerHTML = '';
+    
+    if (data.suppliers.length === 0) {
+        suppliersGrid.innerHTML = '<p style="color: var(--text-muted);">No suppliers found. Try a different search term.</p>';
+    } else {
+        data.suppliers.forEach(supplier => {
+            const confidenceClass = supplier.confidence_score >= 0.8 ? 'confidence-high' : 
+                                   supplier.confidence_score >= 0.6 ? 'confidence-medium' : 'confidence-low';
             
-            // Perform analysis
-            const results = await this.api.analyzeMarket(formData);
+            const certifications = supplier.certifications.map(cert => 
+                `<span class="cert-badge">${cert}</span>`
+            ).join('');
             
-            // Store results
-            this.lastAnalysisResults = results;
-            
-            // Display results
-            this.displayResults(results);
-            
-            // Save to history
-            this.saveToHistory(formData, results);
-            
-            ToastManager.showSuccess('Analysis completed successfully!');
-            
-        } catch (error) {
-            console.error('Analysis failed:', error);
-            ToastManager.showError('Analysis failed. Please try again.');
-            this.hideResults();
-        }
-    }
-
-    getFormData() {
-        return {
-            query: document.getElementById('productQuery').value.trim(),
-            category: document.getElementById('category').value,
-            location: document.getElementById('location').value.trim(),
-            timeline: document.getElementById('timeline').value.trim(),
-            budget_range: this.parseBudgetRange(),
-            requirements: this.parseRequirements()
-        };
-    }
-
-    parseBudgetRange() {
-        // In a real implementation, you might have budget input fields
-        return null;
-    }
-
-    parseRequirements() {
-        const requirements = document.getElementById('requirements').value.trim();
-        if (!requirements) return [];
-        
-        // Split by comma, semicolon, or newline
-        return requirements.split(/[,;\n]/).map(req => req.trim()).filter(req => req);
-    }
-
-    validateForm(formData) {
-        if (!formData.query) {
-            ToastManager.showError('Please enter a product or service description.');
-            document.getElementById('productQuery').focus();
-            return false;
-        }
-
-        if (!formData.category) {
-            ToastManager.showError('Please select a category.');
-            document.getElementById('category').focus();
-            return false;
-        }
-
-        if (formData.query.length < 3) {
-            ToastManager.showError('Product description must be at least 3 characters long.');
-            document.getElementById('productQuery').focus();
-            return false;
-        }
-
-        return true;
-    }
-
-    showProgressiveLoading() {
-        this.api.showLoading();
-        
-        // Simulate progressive loading
-        const steps = [
-            { percent: 10, message: 'Initializing search...' },
-            { percent: 30, message: 'Searching for suppliers...' },
-            { percent: 50, message: 'Analyzing market data...' },
-            { percent: 70, message: 'Processing with AI...' },
-            { percent: 90, message: 'Finalizing results...' }
-        ];
-
-        let currentStep = 0;
-        const progressInterval = setInterval(() => {
-            if (currentStep < steps.length) {
-                const step = steps[currentStep];
-                this.api.updateProgress(step.percent);
-                this.updateLoadingMessage(step.message);
-                currentStep++;
-            } else {
-                clearInterval(progressInterval);
-            }
-        }, 800);
-
-        // Store interval for cleanup
-        this.progressInterval = progressInterval;
-    }
-
-    updateLoadingMessage(message) {
-        const loadingOverlay = document.getElementById('loadingOverlay');
-        if (loadingOverlay) {
-            const messageElement = loadingOverlay.querySelector('p');
-            if (messageElement) {
-                messageElement.textContent = message;
-            }
-        }
-    }
-
-    displayResults(results) {
-        // Clear any existing progress interval
-        if (this.progressInterval) {
-            clearInterval(this.progressInterval);
-        }
-
-        // Show results section
-        const resultsSection = document.getElementById('resultsSection');
-        if (resultsSection) {
-            resultsSection.style.display = 'block';
-            resultsSection.scrollIntoView({ behavior: 'smooth' });
-        }
-
-        // Update executive summary
-        this.updateExecutiveSummary(results);
-        
-        // Update suppliers
-        this.updateSuppliers(results.suppliers);
-        
-        // Update market intelligence
-        this.updateMarketIntelligence(results.market_intelligence);
-        
-        // Update recommendations
-        this.updateRecommendations(results);
-        
-        // Add fade-in animation
-        resultsSection.classList.add('fade-in');
-    }
-
-    updateExecutiveSummary(results) {
-        const summaryElement = document.getElementById('executiveSummary');
-        if (summaryElement) {
-            summaryElement.innerHTML = `
-                <div class="d-flex justify-content-between align-items-start mb-3">
-                    <div>
-                        <h6><i class="fas fa-clock me-2"></i>Processing Time</h6>
-                        <span class="badge bg-primary">${formatTime(results.processing_time)}</span>
+            const supplierCard = `
+                <div class="supplier-card">
+                    <div class="supplier-name">${supplier.name}</div>
+                    <div class="supplier-location">📍 ${supplier.location}</div>
+                    <div class="supplier-description">${supplier.description.substring(0, 150)}...</div>
+                    <div class="confidence-score ${confidenceClass}">
+                        Confidence: ${(supplier.confidence_score * 100).toFixed(0)}%
                     </div>
-                    <div>
-                        <h6><i class="fas fa-gauge-high me-2"></i>Confidence Score</h6>
-                        <span class="badge ${this.getConfidenceBadgeClass(results.confidence_score)}">
-                            ${(results.confidence_score * 100).toFixed(1)}%
-                        </span>
-                    </div>
+                    ${supplier.rating ? `<div style="margin-top: var(--space-sm); color: var(--text-secondary);">⭐ Rating: ${supplier.rating.toFixed(1)}</div>` : ''}
+                    ${certifications ? `<div class="certifications" style="margin-top: var(--space-sm);">${certifications}</div>` : ''}
+                    ${supplier.website ? `<div style="margin-top: var(--space-sm);"><a href="${supplier.website}" target="_blank" style="color: var(--primary-blue); text-decoration: none;">🔗 Visit Website</a></div>` : ''}
                 </div>
-                <p class="mb-0">${results.summary}</p>
+            `;
+            suppliersGrid.innerHTML += supplierCard;
+        });
+    }
+    
+    // Show market insights
+    document.getElementById('priceTrend').innerHTML = `<strong style="color: var(--text-primary) !important;">📈 ${data.market_insights.price_trend.toUpperCase()}</strong>`;
+    
+    const keyFactors = document.getElementById('keyFactors');
+    keyFactors.innerHTML = '';
+    data.market_insights.key_factors.forEach(factor => {
+        keyFactors.innerHTML += `<li style="color: var(--text-primary) !important;">• ${factor}</li>`;
+    });
+    
+    const recommendations = document.getElementById('recommendations');
+    recommendations.innerHTML = '';
+    data.market_insights.recommendations.forEach(rec => {
+        recommendations.innerHTML += `<li style="color: var(--text-primary) !important;">💡 ${rec}</li>`;
+    });
+    
+    // Show results
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Excel Export Functionality
+function exportToExcel() {
+    if (!currentAnalysisData) {
+        alert('No data to export. Please run an analysis first.');
+        return;
+    }
+    
+    try {
+        // Create workbook and worksheet
+        const wb = XLSX.utils.book_new();
+        
+        // Summary sheet
+        const summaryData = [
+            ['Procurement Intelligence Report'],
+            ['Generated on:', new Date().toLocaleString()],
+            ['Query:', currentAnalysisData.query || 'N/A'],
+            ['Location:', currentAnalysisData.location || 'Global'],
+            ['Processing Time:', currentAnalysisData.processing_time.toFixed(2) + ' seconds'],
+            ['Suppliers Found:', currentAnalysisData.suppliers.length],
+            [''],
+            ['Analysis Summary:'],
+            [currentAnalysisData.summary]
+        ];
+        
+        const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+        XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+        
+        // Suppliers sheet
+        const suppliersData = [
+            ['Supplier Name', 'Location', 'Description', 'Confidence Score', 'Rating', 'Certifications', 'Website']
+        ];
+        
+        currentAnalysisData.suppliers.forEach(supplier => {
+            suppliersData.push([
+                supplier.name || 'N/A',
+                supplier.location || 'N/A',
+                supplier.description || 'N/A',
+                (supplier.confidence_score * 100).toFixed(0) + '%',
+                supplier.rating ? supplier.rating.toFixed(1) : 'N/A',
+                supplier.certifications.join(', ') || 'None',
+                supplier.website || 'N/A'
+            ]);
+        });
+        
+        const suppliersWs = XLSX.utils.aoa_to_sheet(suppliersData);
+        XLSX.utils.book_append_sheet(wb, suppliersWs, 'Suppliers');
+        
+        // Market Insights sheet
+        const marketData = [
+            ['Market Insights'],
+            [''],
+            ['Price Trend:', currentAnalysisData.market_insights.price_trend.toUpperCase()],
+            [''],
+            ['Key Factors:']
+        ];
+        
+        currentAnalysisData.market_insights.key_factors.forEach(factor => {
+            marketData.push(['• ' + factor]);
+        });
+        
+        marketData.push([''], ['Recommendations:']);
+        
+        currentAnalysisData.market_insights.recommendations.forEach(rec => {
+            marketData.push(['• ' + rec]);
+        });
+        
+        const marketWs = XLSX.utils.aoa_to_sheet(marketData);
+        XLSX.utils.book_append_sheet(wb, marketWs, 'Market Insights');
+        
+        // Export file
+        const filename = `ProcureAI_Analysis_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, filename);
+        
+        // Show success message
+        alert('✅ Excel report exported successfully!');
+        
+    } catch (error) {
+        console.error('Export error:', error);
+        alert('❌ Export failed. Please try again.');
+    }
+}
+
+// Competitive Intelligence Form Handler
+document.getElementById('competitiveForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+    
+    if (!data.product.trim()) {
+        alert('Please enter a product or service');
+        return;
+    }
+    
+    // Show loading state
+    document.getElementById('competitive-loading').style.display = 'block';
+    document.getElementById('competitive-results').style.display = 'none';
+    
+    try {
+        const response = await fetch('/api/v1/competitive/benchmark', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Analysis failed');
+        }
+        
+        const result = await response.json();
+        displayCompetitiveResults(result);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('🚨 Competitive analysis failed. Please try again.');
+    } finally {
+        document.getElementById('competitive-loading').style.display = 'none';
+    }
+});
+
+function displayCompetitiveResults(data) {
+    // Market Position
+    const marketPositionContent = document.getElementById('market-position-content');
+    let positionHtml = '';
+    
+    if (data.market_average_price) {
+        positionHtml += `
+            <div style="margin-bottom: var(--space-lg);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-md);">
+                    <span style="color: var(--text-secondary);">Market Average:</span>
+                    <span style="color: var(--text-primary); font-size: var(--font-size-xl); font-weight: 600;">$${data.market_average_price}</span>
+                </div>
+        `;
+        
+        if (data.price_variance) {
+            const varianceColor = data.price_variance > 0 ? 'var(--danger-red)' : 'var(--success-green)';
+            positionHtml += `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: var(--text-secondary);">Variance:</span>
+                    <span style="color: ${varianceColor}; font-size: var(--font-size-lg); font-weight: 600;">${data.price_variance > 0 ? '+' : ''}${data.price_variance.toFixed(1)}%</span>
+                </div>
             `;
         }
+        positionHtml += '</div>';
     }
-
-    updateSuppliers(suppliers) {
-        const suppliersList = document.getElementById('suppliersList');
-        const supplierCount = document.getElementById('supplierCount2');
-        
-        if (supplierCount) {
-            supplierCount.textContent = suppliers.length;
-        }
-
-        if (suppliersList) {
-            if (suppliers.length === 0) {
-                suppliersList.innerHTML = `
-                    <div class="col-12">
-                        <div class="alert alert-warning">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            No suppliers found for your criteria. Try broadening your search.
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-
-            suppliersList.innerHTML = suppliers.map(supplier => this.createSupplierCard(supplier)).join('');
-        }
-    }
-
-    createSupplierCard(supplier) {
-        const confidenceClass = getConfidenceClass(supplier.confidence_score);
-        const confidenceText = getConfidenceText(supplier.confidence_score);
-        
-        return `
-            <div class="col-lg-4 col-md-6 mb-4">
-                <div class="supplier-card">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <div>
-                            <h5 class="supplier-name">${supplier.name}</h5>
-                            <div class="supplier-location">
-                                <i class="fas fa-map-marker-alt me-1"></i>
-                                ${supplier.location}
-                            </div>
-                        </div>
-                        <div class="verification-badge">
-                            ${this.getVerificationBadge(supplier.verification_status)}
-                        </div>
-                    </div>
-                    
-                    <div class="confidence-score ${confidenceClass}">
-                        ${confidenceText}
-                    </div>
-                    
-                    ${supplier.rating ? `
-                        <div class="rating-section mb-3">
-                            ${generateStars(supplier.rating)}
-                            <span class="ms-2 text-muted">(${supplier.rating.toFixed(1)})</span>
-                        </div>
-                    ` : ''}
-                    
-                    ${supplier.description ? `
-                        <p class="supplier-description text-muted mb-3">
-                            ${supplier.description.substring(0, 150)}${supplier.description.length > 150 ? '...' : ''}
-                        </p>
-                    ` : ''}
-                    
-                    <div class="supplier-badges mb-3">
-                        ${supplier.certifications.map(cert => 
-                            `<span class="badge bg-success">${cert}</span>`
-                        ).join('')}
-                        ${supplier.specialties.map(specialty => 
-                            `<span class="badge bg-info">${specialty}</span>`
-                        ).join('')}
-                        ${supplier.company_size ? 
-                            `<span class="badge bg-secondary">${supplier.company_size}</span>` : ''
-                        }
-                    </div>
-                    
-                    <div class="supplier-actions">
-                        ${supplier.website ? `
-                            <a href="${supplier.website}" target="_blank" class="btn btn-sm btn-outline-primary me-2">
-                                <i class="fas fa-external-link-alt me-1"></i>
-                                Visit Website
-                            </a>
-                        ` : ''}
-                        <button class="btn btn-sm btn-primary" onclick="showSupplierDetails('${supplier.name}')">
-                            <i class="fas fa-info-circle me-1"></i>
-                            Details
-                        </button>
-                    </div>
+    
+    if (data.percentile_ranking) {
+        positionHtml += `
+            <div style="margin-bottom: var(--space-lg);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-sm); font-size: var(--font-size-sm); color: var(--text-muted);">
+                    <span>25th</span><span>50th</span><span>75th</span><span>90th</span>
                 </div>
+                <div style="height: 12px; background: var(--bg-tertiary); border-radius: var(--radius-md); position: relative; overflow: hidden;">
+                    <div style="height: 100%; background: var(--gradient-primary); border-radius: var(--radius-md); width: ${data.percentile_ranking}%;"></div>
+                </div>
+                <p style="text-align: center; margin-top: var(--space-sm); font-size: var(--font-size-sm); color: var(--text-muted);">${data.percentile_ranking}th percentile</p>
             </div>
         `;
     }
-
-    getVerificationBadge(status) {
-        const badges = {
-            'verified': '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Verified</span>',
-            'pending': '<span class="badge bg-warning"><i class="fas fa-clock me-1"></i>Pending</span>',
-            'unverified': '<span class="badge bg-secondary"><i class="fas fa-question-circle me-1"></i>Unverified</span>',
-            'failed': '<span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>Failed</span>'
-        };
-        return badges[status] || badges['unverified'];
+    
+    marketPositionContent.innerHTML = positionHtml || '<p style="color: var(--text-muted);">Limited market data available</p>';
+    
+    // Negotiation Strategy
+    const negotiationContent = document.getElementById('negotiation-strategy-content');
+    let negotiationHtml = '';
+    
+    if (data.negotiation_strategy.suggested_counter_offer) {
+        negotiationHtml += `
+            <div style="padding: var(--space-lg); border-radius: var(--radius-lg); background: var(--gradient-primary); margin-bottom: var(--space-lg);">
+                <h4 style="font-weight: 600; color: white; margin-bottom: var(--space-sm);">💬 Suggested Counter-offer</h4>
+                <p style="color: white; font-size: var(--font-size-xl); font-weight: 700;">$${data.negotiation_strategy.suggested_counter_offer}</p>
+            </div>
+        `;
     }
-
-    updateMarketIntelligence(marketIntel) {
-        this.updatePriceInsights(marketIntel.price_insights);
-        this.updateMarketTrends(marketIntel.market_trends);
-    }
-
-    updatePriceInsights(priceInsights) {
-        const priceInsightsElement = document.getElementById('priceInsights');
-        if (priceInsightsElement) {
-            const { price_range, currency, trend, factors } = priceInsights;
-            
-            priceInsightsElement.innerHTML = `
-                <div class="row mb-3">
-                    <div class="col-4">
-                        <div class="text-center">
-                            <div class="h5 text-success">${formatCurrency(price_range.min, currency)}</div>
-                            <small class="text-muted">Minimum</small>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="text-center">
-                            <div class="h5 text-primary">${formatCurrency(price_range.avg, currency)}</div>
-                            <small class="text-muted">Average</small>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="text-center">
-                            <div class="h5 text-warning">${formatCurrency(price_range.max, currency)}</div>
-                            <small class="text-muted">Maximum</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mb-3">
-                    <h6><i class="fas fa-trending-${trend === 'increasing' ? 'up' : trend === 'decreasing' ? 'down' : 'right'} me-2"></i>Price Trend</h6>
-                    <span class="badge ${this.getTrendBadgeClass(trend)}">${trend.toUpperCase()}</span>
-                </div>
-                
-                ${factors.length > 0 ? `
-                    <div>
-                        <h6><i class="fas fa-list me-2"></i>Price Factors</h6>
-                        <ul class="list-unstyled">
-                            ${factors.map(factor => `<li><i class="fas fa-arrow-right me-2 text-muted"></i>${factor}</li>`).join('')}
-                        </ul>
-                    </div>
-                ` : ''}
+    
+    if (data.negotiation_strategy.leverage_points.length > 0) {
+        negotiationHtml += `
+            <div style="margin-bottom: var(--space-lg);">
+                <h4 style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-md);">📋 Leverage Points:</h4>
+                <ul style="list-style: none; padding: 0; margin: 0;">
+        `;
+        
+        data.negotiation_strategy.leverage_points.forEach(point => {
+            negotiationHtml += `
+                <li style="display: flex; align-items: flex-start; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+                    <span style="color: var(--success-green); font-weight: 600;">✓</span>
+                    <span style="color: var(--text-secondary);">${point}</span>
+                </li>
             `;
-        }
+        });
+        
+        negotiationHtml += '</ul></div>';
     }
-
-    updateMarketTrends(trends) {
-        const trendsElement = document.getElementById('marketTrends');
-        if (trendsElement) {
-            if (trends.length === 0) {
-                trendsElement.innerHTML = '<p class="text-muted">No market trends available.</p>';
-                return;
-            }
-
-            trendsElement.innerHTML = trends.map(trend => `
-                <div class="trend-item mb-3 p-3 border rounded">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <h6 class="mb-0">${trend.trend_type.replace('_', ' ').toUpperCase()}</h6>
-                        <span class="badge ${this.getImpactBadgeClass(trend.impact)}">${trend.impact.toUpperCase()}</span>
+    
+    negotiationContent.innerHTML = negotiationHtml || '<p style="color: var(--text-muted);">Negotiation strategy analysis in progress</p>';
+    
+    // Competitive Landscape
+    const competitiveContent = document.getElementById('competitive-landscape-content');
+    let competitiveHtml = '';
+    
+    if (data.key_competitors.length > 0) {
+        data.key_competitors.forEach(competitor => {
+            competitiveHtml += `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: var(--space-md); border-radius: var(--radius-lg); background: var(--bg-tertiary); margin-bottom: var(--space-md);">
+                    <div>
+                        <p style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-xs);">${competitor.name}</p>
+                        <p style="font-size: var(--font-size-sm); color: var(--text-muted); text-transform: capitalize;">${competitor.market_position}</p>
                     </div>
-                    <p class="mb-2">${trend.description}</p>
-                    <div class="progress" style="height: 8px;">
-                        <div class="progress-bar" style="width: ${trend.confidence * 100}%"></div>
-                    </div>
-                    <small class="text-muted">Confidence: ${(trend.confidence * 100).toFixed(1)}%</small>
+                    ${competitor.price ? `<span style="color: var(--primary-blue); font-weight: 600;">$${competitor.price}</span>` : ''}
                 </div>
-            `).join('');
-        }
+            `;
+        });
+    } else {
+        competitiveHtml = '<p style="color: var(--text-muted);">Competitive landscape analysis in progress</p>';
     }
-
-    updateRecommendations(results) {
-        const nextSteps = document.getElementById('nextSteps');
-        const recommendationsList = document.getElementById('recommendationsList');
-
-        if (nextSteps && results.next_steps) {
-            nextSteps.innerHTML = results.next_steps.map(step => `
-                <li class="list-group-item">
-                    <i class="fas fa-check-circle me-2 text-success"></i>
-                    ${step}
-                </li>
-            `).join('');
-        }
-
-        if (recommendationsList && results.recommendations) {
-            recommendationsList.innerHTML = results.recommendations.map(rec => `
-                <li class="list-group-item">
-                    <i class="fas fa-lightbulb me-2 text-warning"></i>
-                    ${rec}
-                </li>
-            `).join('');
-        }
+    
+    competitiveContent.innerHTML = competitiveHtml;
+    
+    // Historical Trends Intelligence (New)
+    if (data.historical_trends) {
+        renderHistoricalTrends(data.historical_trends);
     }
-
-    getTrendBadgeClass(trend) {
-        const classes = {
-            'increasing': 'bg-danger',
-            'decreasing': 'bg-success',
-            'stable': 'bg-info'
-        };
-        return classes[trend] || 'bg-secondary';
+    
+    // Market Timing Intelligence (New)
+    if (data.timing_intelligence) {
+        renderTimingIntelligence(data.timing_intelligence);
     }
+    
+    // Show results
+    document.getElementById('competitive-results').style.display = 'block';
+    document.getElementById('competitive-results').scrollIntoView({ behavior: 'smooth' });
+}
 
-    getImpactBadgeClass(impact) {
-        const classes = {
-            'high': 'bg-danger',
-            'medium': 'bg-warning',
-            'low': 'bg-success'
-        };
-        return classes[impact] || 'bg-secondary';
-    }
-
-    getConfidenceBadgeClass(score) {
-        if (score >= 0.8) return 'bg-success';
-        if (score >= 0.6) return 'bg-warning';
-        return 'bg-danger';
-    }
-
-    hideResults() {
-        const resultsSection = document.getElementById('resultsSection');
-        if (resultsSection) {
-            resultsSection.style.display = 'none';
-        }
-    }
-
-    saveToHistory(formData, results) {
-        const historyItem = {
-            id: Date.now(),
-            timestamp: new Date().toISOString(),
-            query: formData,
-            results: results,
-            processingTime: results.processing_time
-        };
-
-        let history = JSON.parse(localStorage.getItem('procurementHistory') || '[]');
-        history.unshift(historyItem);
+// Historical Trends Intelligence Rendering
+function renderHistoricalTrends(trendsData) {
+    // Create or find historical trends container
+    let trendsContainer = document.getElementById('historical-trends-container');
+    if (!trendsContainer) {
+        // Create new container after competitive results
+        trendsContainer = document.createElement('div');
+        trendsContainer.id = 'historical-trends-container';
+        trendsContainer.style.marginTop = 'var(--space-xl)';
         
-        // Keep only last 50 items
-        history = history.slice(0, 50);
-        
-        localStorage.setItem('procurementHistory', JSON.stringify(history));
+        const competitiveResults = document.getElementById('competitive-results');
+        competitiveResults.appendChild(trendsContainer);
     }
-
-    async handleSearchInput(event) {
-        const query = event.target.value.trim();
-        if (query.length < 3) return;
-
-        try {
-            // Get search suggestions (if API supports it)
-            const suggestions = await this.getSuggestions(query);
-            this.showSuggestions(suggestions);
-        } catch (error) {
-            console.error('Failed to get suggestions:', error);
-        }
-    }
-
-    async getSuggestions(query) {
-        try {
-            const response = await fetch(`/api/v1/suppliers/suggestions?query=${encodeURIComponent(query)}`);
-            if (response.ok) {
-                return await response.json();
-            }
-        } catch (error) {
-            console.error('Suggestions API error:', error);
-        }
-        return [];
-    }
-
-    showSuggestions(suggestions) {
-        // Implementation for search suggestions dropdown
-        // This would create a dropdown with suggestions
-        console.log('Suggestions:', suggestions);
-    }
-
-    handleCategoryChange(event) {
-        const category = event.target.value;
-        // Update form based on category selection
-        this.updateFormForCategory(category);
-    }
-
-    updateFormForCategory(category) {
-        // Category-specific form updates
-        const requirementsField = document.getElementById('requirements');
-        
-        const categoryPlaceholders = {
-            'materials': 'e.g., Grade specifications, quantity requirements, delivery schedule',
-            'equipment': 'e.g., Technical specifications, warranty requirements, service support',
-            'services': 'e.g., Service level agreements, expertise requirements, location preferences',
-            'software': 'e.g., License type, integration requirements, support level',
-            'construction': 'e.g., Project specifications, compliance requirements, timeline',
-            'manufacturing': 'e.g., Production capacity, quality standards, delivery schedule'
-        };
-
-        if (requirementsField && categoryPlaceholders[category]) {
-            requirementsField.placeholder = categoryPlaceholders[category];
-        }
-    }
-
-    animateStats() {
-        // Animate statistics on page load
-        const animateValue = (element, start, end, duration) => {
-            const startTime = performance.now();
-            
-            const animate = (currentTime) => {
-                const elapsed = currentTime - startTime;
-                const progress = Math.min(elapsed / duration, 1);
+    
+    let trendsHtml = `
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">📈 Historical Trend Intelligence</h3>
+            </div>
+            <div style="padding: var(--space-lg);">
+                <!-- Price History Chart -->
+                <div style="margin-bottom: var(--space-xl);">
+                    <h4 style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-md);">📊 6-Month Price History</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--space-md); margin-bottom: var(--space-lg);">
+    `;
+    
+    // Render price history points
+    trendsData.price_history.forEach(point => {
+        const hasEvents = point.market_events && point.market_events.length > 0;
+        trendsHtml += `
+            <div style="text-align: center; padding: var(--space-md); border-radius: var(--radius-lg); background: var(--bg-tertiary);">
+                <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-bottom: var(--space-xs);">${point.month}</div>
+                <div style="font-size: var(--font-size-lg); font-weight: 600; color: var(--text-primary);">$${point.price.toLocaleString()}</div>
+                ${hasEvents ? `<div style="font-size: var(--font-size-xs); color: var(--warning-yellow); margin-top: var(--space-xs);">📌 Event</div>` : ''}
+            </div>
+        `;
+    });
+    
+    trendsHtml += `
+                    </div>
+                </div>
                 
-                const value = start + (end - start) * progress;
-                element.textContent = Math.floor(value).toLocaleString();
+                <!-- Trend Analysis -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-lg);">
+                    <div style="padding: var(--space-md); border-radius: var(--radius-lg); background: var(--bg-tertiary);">
+                        <div style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--space-xs);">Price Direction</div>
+                        <div style="font-size: var(--font-size-lg); font-weight: 600; color: var(--text-primary); text-transform: capitalize;">${getTrendIcon(trendsData.trend_analysis.direction)} ${trendsData.trend_analysis.direction}</div>
+                    </div>
+                    <div style="padding: var(--space-md); border-radius: var(--radius-lg); background: var(--bg-tertiary);">
+                        <div style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--space-xs);">Volatility</div>
+                        <div style="font-size: var(--font-size-lg); font-weight: 600; color: ${getVolatilityColor(trendsData.trend_analysis.volatility)}; text-transform: capitalize;">${trendsData.trend_analysis.volatility}</div>
+                    </div>
+                    <div style="padding: var(--space-md); border-radius: var(--radius-lg); background: var(--bg-tertiary);">
+                        <div style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--space-xs);">Current Position</div>
+                        <div style="font-size: var(--font-size-base); font-weight: 600; color: var(--text-primary);">${trendsData.trend_analysis.current_position}</div>
+                    </div>
+                </div>
                 
-                if (progress < 1) {
-                    requestAnimationFrame(animate);
-                }
-            };
-            
-            requestAnimationFrame(animate);
-        };
+                <!-- Seasonal Pattern -->
+                <div style="margin-bottom: var(--space-lg);">
+                    <h4 style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-md);">🗓️ Seasonal Pattern</h4>
+                    <p style="color: var(--text-secondary); padding: var(--space-md); border-radius: var(--radius-lg); background: var(--bg-tertiary);">${trendsData.trend_analysis.seasonal_pattern}</p>
+                </div>
+                
+                <!-- Key Insights -->
+                <div>
+                    <h4 style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-md);">💡 Historical Insights</h4>
+                    <ul style="list-style: none; padding: 0; margin: 0;">
+    `;
+    
+    trendsData.insights.forEach(insight => {
+        trendsHtml += `
+            <li style="display: flex; align-items: flex-start; gap: var(--space-sm); margin-bottom: var(--space-sm); padding: var(--space-sm); border-radius: var(--radius-md); background: var(--bg-tertiary);">
+                <span style="color: var(--primary-blue); font-weight: 600;">📊</span>
+                <span style="color: var(--text-secondary);">${insight}</span>
+            </li>
+        `;
+    });
+    
+    trendsHtml += `
+                    </ul>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    trendsContainer.innerHTML = trendsHtml;
+}
 
-        // Animate stats with realistic numbers
-        setTimeout(() => {
-            const supplierCount = document.getElementById('supplierCount');
-            const analysisCount = document.getElementById('analysisCount');
-            
-            if (supplierCount) animateValue(supplierCount, 0, 12547, 2000);
-            if (analysisCount) animateValue(analysisCount, 0, 892, 1500);
-        }, 500);
-    }
-
-    updateStats() {
-        // Update dynamic statistics
-        const avgResponseTime = document.getElementById('avgResponseTime');
-        const accuracyRate = document.getElementById('accuracyRate');
+// Market Timing Intelligence Rendering
+function renderTimingIntelligence(timingData) {
+    // Create or find timing intelligence container
+    let timingContainer = document.getElementById('timing-intelligence-container');
+    if (!timingContainer) {
+        // Create new container after historical trends
+        timingContainer = document.createElement('div');
+        timingContainer.id = 'timing-intelligence-container';
+        timingContainer.style.marginTop = 'var(--space-xl)';
         
-        if (avgResponseTime) {
-            // Simulate real-time response time
-            const times = ['2.8s', '3.2s', '2.9s', '3.5s', '2.7s'];
-            let index = 0;
-            
-            setInterval(() => {
-                avgResponseTime.textContent = times[index];
-                index = (index + 1) % times.length;
-            }, 10000);
-        }
+        const competitiveResults = document.getElementById('competitive-results');
+        competitiveResults.appendChild(timingContainer);
+    }
+    
+    const urgencyColor = getUrgencyColor(timingData.urgency_level);
+    const recommendationIcon = getRecommendationIcon(timingData.recommendation);
+    
+    let timingHtml = `
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">⏰ Market Timing Intelligence</h3>
+            </div>
+            <div style="padding: var(--space-lg);">
+                <!-- Primary Recommendation -->
+                <div style="padding: var(--space-xl); border-radius: var(--radius-xl); background: ${urgencyColor}; margin-bottom: var(--space-xl); text-align: center;">
+                    <div style="font-size: var(--font-size-3xl); margin-bottom: var(--space-md);">${recommendationIcon}</div>
+                    <h3 style="font-weight: 700; color: white; margin-bottom: var(--space-sm); font-size: var(--font-size-2xl);">${formatRecommendation(timingData.recommendation)}</h3>
+                    <p style="color: rgba(255,255,255,0.9); font-size: var(--font-size-lg);">Urgency Level: ${timingData.urgency_level}</p>
+                </div>
+                
+                <!-- Price Forecasts -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: var(--space-lg); margin-bottom: var(--space-xl);">
+                    <div style="padding: var(--space-lg); border-radius: var(--radius-lg); background: var(--bg-tertiary);">
+                        <h4 style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-md);">📅 30-Day Forecast</h4>
+                        <div style="display: flex; align-items: center; gap: var(--space-md);">
+                            <span style="font-size: var(--font-size-2xl);">${getDirectionIcon(timingData.price_forecast['30_days'].direction)}</span>
+                            <div>
+                                <div style="font-size: var(--font-size-lg); font-weight: 600; color: var(--text-primary); text-transform: capitalize;">${timingData.price_forecast['30_days'].direction}</div>
+                                <div style="font-size: var(--font-size-sm); color: var(--text-muted);">${timingData.price_forecast['30_days'].range}</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="padding: var(--space-lg); border-radius: var(--radius-lg); background: var(--bg-tertiary);">
+                        <h4 style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-md);">📅 60-Day Forecast</h4>
+                        <div style="display: flex; align-items: center; gap: var(--space-md);">
+                            <span style="font-size: var(--font-size-2xl);">${getDirectionIcon(timingData.price_forecast['60_days'].direction)}</span>
+                            <div>
+                                <div style="font-size: var(--font-size-lg); font-weight: 600; color: var(--text-primary); text-transform: capitalize;">${timingData.price_forecast['60_days'].direction}</div>
+                                <div style="font-size: var(--font-size-sm); color: var(--text-muted);">${timingData.price_forecast['60_days'].range}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Optimal Window -->
+                <div style="margin-bottom: var(--space-xl);">
+                    <h4 style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-md);">🎯 Optimal Purchase Window</h4>
+                    <div style="padding: var(--space-lg); border-radius: var(--radius-lg); background: var(--bg-tertiary);">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-md); margin-bottom: var(--space-md);">
+                            <div>
+                                <div style="font-size: var(--font-size-sm); color: var(--text-muted);">Start Date</div>
+                                <div style="font-size: var(--font-size-base); font-weight: 600; color: var(--text-primary);">${timingData.optimal_window.start_date}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: var(--font-size-sm); color: var(--text-muted);">End Date</div>
+                                <div style="font-size: var(--font-size-base); font-weight: 600; color: var(--text-primary);">${timingData.optimal_window.end_date}</div>
+                            </div>
+                        </div>
+                        <p style="color: var(--text-secondary); font-style: italic;">${timingData.optimal_window.reasoning}</p>
+                    </div>
+                </div>
+                
+                <!-- Savings Opportunity -->
+                <div>
+                    <h4 style="font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-md);">💰 Savings Opportunity</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md);">
+                        <div style="padding: var(--space-md); border-radius: var(--radius-lg); background: var(--gradient-success); text-align: center;">
+                            <div style="color: white; font-size: var(--font-size-sm); margin-bottom: var(--space-xs);">Per Unit Savings</div>
+                            <div style="color: white; font-size: var(--font-size-xl); font-weight: 700;">${timingData.savings_opportunity.amount_per_unit}</div>
+                        </div>
+                        <div style="padding: var(--space-md); border-radius: var(--radius-lg); background: var(--gradient-success); text-align: center;">
+                            <div style="color: white; font-size: var(--font-size-sm); margin-bottom: var(--space-xs);">Total Potential</div>
+                            <div style="color: white; font-size: var(--font-size-xl); font-weight: 700;">${timingData.savings_opportunity.total_potential}</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: var(--space-md); padding: var(--space-md); border-radius: var(--radius-lg); background: var(--bg-tertiary);">
+                        <div style="font-size: var(--font-size-sm); color: var(--text-muted); margin-bottom: var(--space-xs);">Risk of Waiting</div>
+                        <p style="color: var(--text-secondary);">${timingData.savings_opportunity.risk_of_waiting}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    timingContainer.innerHTML = timingHtml;
+}
 
-        if (accuracyRate) {
-            // Simulate accuracy rate updates
-            const rates = ['94%', '95%', '93%', '96%', '94%'];
-            let index = 0;
-            
-            setInterval(() => {
-                accuracyRate.textContent = rates[index];
-                index = (index + 1) % rates.length;
-            }, 15000);
-        }
+// Helper functions for styling and icons
+function getTrendIcon(direction) {
+    switch(direction) {
+        case 'upward': return '📈';
+        case 'downward': return '📉';
+        case 'stable': return '➡️';
+        default: return '📊';
     }
 }
 
-// Global functions for supplier interactions
-function showSupplierDetails(supplierName) {
-    // In a real implementation, this would open a modal or navigate to details page
-    console.log('Showing details for:', supplierName);
-    ToastManager.showSuccess(`Supplier details for ${supplierName} - Feature coming soon!`);
+function getVolatilityColor(volatility) {
+    switch(volatility) {
+        case 'high': return 'var(--danger-red)';
+        case 'medium': return 'var(--warning-yellow)';
+        case 'low': return 'var(--success-green)';
+        default: return 'var(--text-primary)';
+    }
 }
 
-// Initialize dashboard when DOM is ready
+function getUrgencyColor(urgency) {
+    switch(urgency) {
+        case 'HIGH': return 'var(--gradient-primary)';
+        case 'MEDIUM': return 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+        case 'LOW': return 'var(--gradient-success)';
+        default: return 'var(--bg-tertiary)';
+    }
+}
+
+function getRecommendationIcon(recommendation) {
+    switch(recommendation) {
+        case 'BUY_NOW': return '🚀';
+        case 'WAIT': return '⏳';
+        case 'MONITOR': return '👀';
+        default: return '📊';
+    }
+}
+
+function formatRecommendation(recommendation) {
+    return recommendation.replace('_', ' ');
+}
+
+function getDirectionIcon(direction) {
+    switch(direction) {
+        case 'up': return '📈';
+        case 'down': return '📉';
+        case 'stable': return '➡️';
+        default: return '📊';
+    }
+}
+
+// Initialize page on load
 document.addEventListener('DOMContentLoaded', function() {
-    new DashboardManager();
+    // Show dashboard by default
+    switchPage('dashboard');
 });
-
-// Utility function for debouncing
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
