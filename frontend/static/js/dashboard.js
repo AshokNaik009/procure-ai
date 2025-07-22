@@ -122,6 +122,7 @@ function switchPage(pageId, clickEvent) {
         'dashboard': 'Dashboard',
         'supplier-discovery': 'Supplier Discovery',
         'competitive-intelligence': 'Market Intelligence',
+        'rfp-generation': 'RFP Generation',
         'analytics': 'Analytics',
         'about': 'About'
     };
@@ -130,6 +131,7 @@ function switchPage(pageId, clickEvent) {
         'dashboard': 'Procurement Intelligence Dashboard',
         'supplier-discovery': 'Advanced Supplier Discovery',
         'competitive-intelligence': 'Competitive Market Intelligence',
+        'rfp-generation': 'AI-Powered RFP Generation',
         'analytics': 'Analytics & Reporting',
         'about': 'About ProcureAI'
     };
@@ -138,6 +140,7 @@ function switchPage(pageId, clickEvent) {
         'dashboard': 'AI-powered supplier discovery and competitive analysis',
         'supplier-discovery': 'Find the best suppliers using our AI-powered agent',
         'competitive-intelligence': 'Market positioning and competitive benchmarking',
+        'rfp-generation': 'Generate professional RFP, RFI, and RFQ documents using AI',
         'analytics': 'Advanced analytics and procurement insights',
         'about': 'Learn why ProcureAI is better than manual Google searches'
     };
@@ -848,8 +851,753 @@ function getDirectionIcon(direction) {
     }
 }
 
+// RFP Generation Functions
+let currentRFPData = null;
+
+// Initialize RFP page event listeners
+function initializeRFPGeneration() {
+    // Add requirement management
+    const addReqBtn = document.getElementById('add-requirement');
+    if (addReqBtn) {
+        addReqBtn.addEventListener('click', addRequirement);
+    }
+    
+    // Form submission
+    const rfpForm = document.getElementById('rfpGenerationForm');
+    if (rfpForm) {
+        rfpForm.addEventListener('submit', handleRFPSubmission);
+    }
+    
+    // Remove requirement handlers (delegated)
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-requirement')) {
+            removeRequirement(e.target);
+        }
+    });
+}
+
+function addRequirement() {
+    const container = document.getElementById('requirements-container');
+    const newReq = document.createElement('div');
+    newReq.className = 'requirement-item';
+    newReq.style.display = 'flex';
+    newReq.style.gap = 'var(--space-sm)';
+    newReq.style.marginBottom = 'var(--space-sm)';
+    
+    newReq.innerHTML = `
+        <input 
+            type="text" 
+            class="form-input requirement-input" 
+            placeholder="Enter a requirement..."
+            style="flex: 1;"
+        >
+        <button type="button" class="btn-outline remove-requirement" style="width: 40px;">×</button>
+    `;
+    
+    container.appendChild(newReq);
+    newReq.querySelector('.requirement-input').focus();
+}
+
+function removeRequirement(button) {
+    const container = document.getElementById('requirements-container');
+    if (container.children.length > 1) {
+        button.parentNode.remove();
+    }
+}
+
+async function handleRFPSubmission(event) {
+    event.preventDefault();
+    
+    // Collect form data
+    const formData = new FormData(event.target);
+    const requirements = [];
+    
+    document.querySelectorAll('.requirement-input').forEach(input => {
+        if (input.value.trim()) {
+            requirements.push(input.value.trim());
+        }
+    });
+    
+    if (requirements.length === 0) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Missing Requirements',
+            text: 'Please add at least one requirement to generate the document.',
+            confirmButtonColor: '#007bff'
+        });
+        return;
+    }
+    
+    const requestData = {
+        document_type: formData.get('document_type'),
+        project_title: formData.get('project_title'),
+        description: formData.get('description'),
+        requirements: requirements,
+        budget_range: formData.get('budget_range') || null,
+        timeline: formData.get('timeline') || null,
+        industry: formData.get('industry') || null
+    };
+    
+    // Switch to generation step and ensure it's visible
+    switchRFPStep(2);
+    
+    try {
+        await generateRFPDocument(requestData);
+    } catch (error) {
+        console.error('RFP Generation failed:', error);
+        alert('RFP generation failed. Please try again.');
+        switchRFPStep(1);
+    }
+}
+
+function switchRFPStep(stepNumber) {
+    console.log('🔄 Switching to RFP step:', stepNumber);
+    
+    try {
+        // Update step navigation (only in RFP page)
+        const rfpSteps = document.querySelectorAll('#rfp-generation-page .step');
+        console.log(`📊 Found ${rfpSteps.length} step navigation elements`);
+        
+        rfpSteps.forEach(step => {
+            step.classList.remove('active');
+            const stepNum = parseInt(step.dataset.step);
+            if (stepNum === stepNumber) {
+                step.classList.add('active');
+                console.log('✅ Activated step navigation:', stepNumber);
+            }
+        });
+        
+        // Update step content (only in RFP page)
+        const rfpStepContents = document.querySelectorAll('#rfp-generation-page .step-content');
+        console.log(`📊 Found ${rfpStepContents.length} step content elements`);
+        
+        rfpStepContents.forEach((content, index) => {
+            content.classList.remove('active');
+            content.style.display = 'none';
+            console.log(`❌ Hidden step content ${index + 1}`);
+        });
+        
+        const activeStep = document.getElementById(`rfp-step${stepNumber}`);
+        if (activeStep) {
+            activeStep.classList.add('active');
+            activeStep.style.display = 'block';
+            activeStep.style.visibility = 'visible';
+            console.log('✅ Displayed step content:', stepNumber);
+            
+            // Ensure the step is fully visible
+            setTimeout(() => {
+                activeStep.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'start',
+                    inline: 'nearest' 
+                });
+                console.log('✅ Scrolled to step:', stepNumber);
+            }, 100);
+            
+            // Special handling for step 2 (progress)
+            if (stepNumber === 2) {
+                console.log('🎯 Step 2 activated - ensuring progress is visible');
+                const loadingSection = activeStep.querySelector('#rfp-loading');
+                if (loadingSection) {
+                    loadingSection.style.display = 'block';
+                    loadingSection.style.visibility = 'visible';
+                    console.log('✅ Made loading section visible');
+                }
+                
+                // Force a visual indicator that step 2 is active
+                activeStep.style.backgroundColor = '#f8f9fa';
+                activeStep.style.border = '2px solid #007bff';
+                activeStep.style.borderRadius = '8px';
+                activeStep.style.padding = '20px';
+                
+                console.log('✅ Applied visual styling to step 2');
+            }
+            
+            // Special handling for step 3 (results)
+            if (stepNumber === 3) {
+                console.log('🎯 Step 3 activated - ensuring results are visible');
+                const resultsSection = activeStep.querySelector('#rfp-results');
+                if (resultsSection) {
+                    resultsSection.style.display = 'block';
+                    resultsSection.style.visibility = 'visible';
+                    console.log('✅ Made results section visible');
+                }
+                
+                // Force a visual indicator that step 3 is active
+                activeStep.style.backgroundColor = '#f8f9fa';
+                activeStep.style.border = '2px solid #007bff';
+                activeStep.style.borderRadius = '8px';
+                activeStep.style.padding = '20px';
+                
+                console.log('✅ Applied visual styling to step 3');
+            }
+            
+        } else {
+            console.error('❌ Could not find step element:', `rfp-step${stepNumber}`);
+            
+            // Fallback: try to find any element that might be the step
+            const allSteps = document.querySelectorAll('[id*="rfp-step"]');
+            console.log('🔍 Available step elements:', Array.from(allSteps).map(el => el.id));
+        }
+        
+        console.log('🎯 Step switching completed for:', stepNumber);
+        
+    } catch (error) {
+        console.error('❌ Error in switchRFPStep:', error);
+        alert('Error switching steps: ' + error.message);
+    }
+}
+
+async function generateRFPDocument(requestData) {
+    console.log('🚀 Starting RFP generation with data:', requestData);
+    
+    try {
+        // Start progress updates
+        updateGenerationProgress('Initializing AI generation...', 10);
+        
+        // Start the API call with progress simulation
+        const progressInterval = startProgressSimulation();
+        
+        console.log('📡 Making API call to:', '/api/v1/rfp/generate');
+        const response = await fetch('/api/v1/rfp/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        clearInterval(progressInterval);
+        
+        console.log('📡 API Response status:', response.status);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ API Error:', errorText);
+            throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
+        }
+        
+        updateGenerationProgress('Processing API response...', 90);
+        
+        const result = await response.json();
+        console.log('✅ API Response received:', result);
+        
+        currentRFPData = result;
+        
+        updateGenerationProgress('Document generation complete!', 100);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Display results and switch to preview
+        console.log('📄 Displaying results and switching to step 3...');
+        displayRFPResults(result);
+        switchRFPStep(3);
+        
+        console.log('🎉 RFP generation completed successfully');
+        
+        // Force scroll to top of results
+        const step3Element = document.getElementById('rfp-step3');
+        if (step3Element) {
+            step3Element.scrollIntoView({ behavior: 'smooth' });
+            console.log('✅ Scrolled to step 3 element');
+        }
+        
+        // Auto-trigger download after successful generation
+        setTimeout(() => {
+            Swal.fire({
+                icon: 'success',
+                title: '🎉 RFP Generation Complete!',
+                html: `
+                    <div style="text-align: left; margin: 15px 0;">
+                        <p><strong>📄 Project:</strong> ${result.project_title}</p>
+                        <p><strong>⏱️ Generated in:</strong> ${result.processing_time.toFixed(1)}s</p>
+                        <p><strong>📊 Sections:</strong> ${result.generation_metadata.sections_count} professional sections</p>
+                        <p><strong>💬 Words:</strong> ${result.final_document.split(' ').length}</p>
+                    </div>
+                    <p style="margin-top: 15px;">Would you like to download the PDF now?</p>
+                `,
+                showCancelButton: true,
+                confirmButtonColor: '#007bff',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '📄 Download PDF',
+                cancelButtonText: 'View First'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    downloadRFPDocument();
+                }
+            });
+        }, 1000);
+        
+    } catch (error) {
+        console.error('❌ RFP Generation failed:', error);
+        updateGenerationProgress('Generation failed: ' + error.message, 0);
+        
+        // Show error message to user
+        Swal.fire({
+            icon: 'error',
+            title: 'Generation Failed',
+            text: 'RFP generation failed: ' + error.message,
+            confirmButtonColor: '#007bff'
+        });
+        throw error;
+    }
+}
+
+function startProgressSimulation() {
+    let progress = 10;
+    const messages = [
+        'Analyzing project requirements...',
+        'Researching industry standards...',
+        'Generating document sections...',
+        'Finalizing RFP structure...'
+    ];
+    let messageIndex = 0;
+    
+    return setInterval(() => {
+        if (progress < 85) {
+            progress += Math.random() * 15 + 5;
+            if (messageIndex < messages.length) {
+                updateGenerationProgress(messages[messageIndex], Math.min(progress, 85));
+                messageIndex++;
+            }
+        }
+    }, 1000);
+}
+
+function updateGenerationProgress(message, percentage) {
+    console.log(`📊 Progress: ${percentage}% - ${message}`);
+    
+    const progressMessage = document.getElementById('progress-message');
+    const progressFill = document.getElementById('rfp-progress-fill');
+    const progressPercentage = document.getElementById('progress-percentage');
+    
+    if (progressMessage) {
+        progressMessage.textContent = message;
+        console.log('✅ Updated progress message');
+    } else {
+        console.error('❌ Progress message element not found');
+    }
+    
+    if (progressFill) {
+        progressFill.style.width = `${Math.round(percentage)}%`;
+        console.log(`✅ Updated progress bar to ${percentage}%`);
+    } else {
+        console.error('❌ Progress fill element not found');
+    }
+    
+    if (progressPercentage) {
+        progressPercentage.textContent = `${Math.round(percentage)}%`;
+        console.log(`✅ Updated progress percentage display`);
+    }
+    
+    // Update step indicators
+    const steps = ['step-analyze', 'step-research', 'step-generate', 'step-finalize'];
+    steps.forEach((stepId, index) => {
+        const step = document.getElementById(stepId);
+        if (step) {
+            if (percentage >= (index + 1) * 20) {
+                if (!step.innerHTML.includes('✅')) {
+                    step.style.color = '#28a745';
+                    step.style.fontWeight = 'bold';
+                    step.innerHTML = step.innerHTML + ' ✅';
+                    console.log(`✅ Updated step indicator: ${stepId}`);
+                }
+            }
+        }
+    });
+}
+
+function displayRFPResults(data) {
+    console.log('🎨 Starting to display RFP results:', data);
+    
+    try {
+        // Update document title
+        const docTitle = document.getElementById('generated-document-title');
+        if (docTitle) {
+            docTitle.textContent = `Generated ${data.document_type}: ${data.project_title}`;
+            console.log('✅ Updated document title');
+        } else {
+            console.error('❌ Document title element not found');
+        }
+        
+        // Update generation info  
+        const genTime = document.getElementById('generation-time');
+        const docLength = document.getElementById('document-length');
+        const sectionsCount = document.getElementById('sections-count');
+        
+        if (genTime) {
+            genTime.textContent = `Generated in ${data.processing_time.toFixed(1)}s`;
+            console.log('✅ Updated generation time');
+        }
+        if (docLength) {
+            docLength.textContent = `${data.final_document.split(' ').length} words`;
+            console.log('✅ Updated document length');
+        }
+        if (sectionsCount) {
+            sectionsCount.textContent = `${data.generation_metadata.sections_count} sections`;
+            console.log('✅ Updated sections count');
+        }
+        
+        // Display document preview
+        const preview = document.getElementById('document-preview');
+        if (preview) {
+            console.log('✅ Found document preview element');
+            
+            // Build a cleaner document structure with FORCED BLACK TEXT
+            let htmlContent = `
+                <div style="max-width: 800px; margin: 0 auto; font-family: Georgia, serif; color: #000000 !important; line-height: 1.6; background: #ffffff;">
+                    <h1 style="color: #007bff !important; border-bottom: 2px solid #007bff; padding-bottom: 10px;">
+                        ${data.document_type}: ${data.project_title}
+                    </h1>
+                    
+                    <div style="background: #ffffff !important; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #007bff; color: #000000 !important;">
+                        <strong style="color: #000000 !important;">Document Type:</strong> <span style="color: #000000 !important;">${data.document_type} - ${getDocumentTypeName(data.document_type)}</span><br>
+                        <strong style="color: #000000 !important;">Generated:</strong> <span style="color: #000000 !important;">${new Date().toLocaleDateString()}</span><br>
+                        <strong style="color: #000000 !important;">Processing Time:</strong> <span style="color: #000000 !important;">${data.processing_time.toFixed(1)} seconds</span><br>
+                        <strong style="color: #000000 !important;">Sections:</strong> <span style="color: #000000 !important;">${data.generation_metadata.sections_count} professional sections</span><br>
+                        <strong style="color: #000000 !important;">Word Count:</strong> <span style="color: #000000 !important;">${data.final_document.split(' ').length} words</span>
+                    </div>
+
+                    <h2 style="color: #007bff !important; margin-top: 30px;">📋 Executive Summary</h2>
+                    <div style="background: #ffffff !important; padding: 15px; border-radius: 6px; border: 1px solid #007bff; color: #000000 !important;">
+                        <p style="color: #000000 !important;">This ${data.document_type} has been professionally generated with comprehensive requirements analysis, industry benchmarks, and detailed specifications for <strong style="color: #000000 !important;">${data.project_title}</strong>.</p>
+                    </div>
+
+                    <h2 style="color: #007bff !important; margin-top: 30px;">📊 Project Analysis</h2>
+                    <div style="background: #ffffff !important; padding: 15px; border-radius: 6px; border: 1px solid #007bff; color: #000000 !important;">
+                        <p style="color: #000000 !important;"><strong style="color: #000000 !important;">Project Category:</strong> <span style="color: #000000 !important;">${data.requirements_analysis.project_category}</span></p>
+                        <p style="color: #000000 !important;"><strong style="color: #000000 !important;">Complexity Level:</strong> <span style="color: #000000 !important;">${data.requirements_analysis.complexity_level}</span></p>
+                        <p style="color: #000000 !important;"><strong style="color: #000000 !important;">Key Challenges:</strong></p>
+                        <ul style="margin: 10px 0; padding-left: 20px; color: #000000 !important;">
+                            ${data.requirements_analysis.key_challenges.map(challenge => `<li style="margin: 5px 0; color: #000000 !important;">${challenge}</li>`).join('')}
+                        </ul>
+                    </div>
+
+                    <h2 style="color: #007bff !important; margin-top: 30px;">🏆 Evaluation Framework</h2>
+                    <div style="background: #ffffff !important; padding: 15px; border-radius: 6px; border: 1px solid #007bff; color: #000000 !important;">
+                        ${data.requirements_analysis.evaluation_factors.map(factor => 
+                            `<div style="display: flex; justify-content: space-between; margin: 8px 0; padding: 8px; background: #f8f9fa !important; border-radius: 4px; color: #000000 !important;">
+                                <strong style="color: #000000 !important;">${factor.factor}:</strong> 
+                                <span style="color: #007bff !important; font-weight: bold;">${factor.weight}</span>
+                            </div>`
+                        ).join('')}
+                    </div>
+
+                    <h2 style="color: #007bff !important; margin-top: 30px;">📈 Market Intelligence</h2>
+                    <div style="background: #ffffff !important; padding: 15px; border-radius: 6px; border: 1px solid #007bff; color: #000000 !important;">
+                        <p style="color: #000000 !important;"><strong style="color: #000000 !important;">Industry Timeline:</strong> <span style="color: #000000 !important;">${data.industry_benchmarks.typical_timeline}</span></p>
+                        <p style="color: #000000 !important;"><strong style="color: #000000 !important;">Budget Guidelines:</strong> <span style="color: #000000 !important;">${data.industry_benchmarks.budget_benchmarks}</span></p>
+                        <p style="color: #000000 !important;"><strong style="color: #000000 !important;">Current Market Trends:</strong></p>
+                        <ul style="margin: 10px 0; padding-left: 20px; color: #000000 !important;">
+                            ${data.industry_benchmarks.market_trends.map(trend => `<li style="margin: 5px 0; color: #000000 !important;">${trend}</li>`).join('')}
+                        </ul>
+                    </div>
+
+                    <div style="margin-top: 40px; padding: 25px; background: linear-gradient(135deg, #007bff 0%, #6610f2 100%); color: white; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(0,123,255,0.3);">
+                        <h3 style="margin: 0 0 10px 0; color: white; font-size: 24px;">🎉 Document Generation Complete!</h3>
+                        <p style="margin: 0; opacity: 0.95; font-size: 16px;">Professional ${data.document_type} ready for vendor distribution • ${data.generation_metadata.sections_count} sections • Industry-standard format</p>
+                    </div>
+                </div>
+            `;
+            
+            preview.innerHTML = htmlContent;
+            console.log('✅ Updated document preview with enhanced content');
+            
+            // Force visibility
+            preview.style.display = 'block';
+            preview.style.visibility = 'visible';
+            
+        } else {
+            console.error('❌ Document preview element not found');
+        }
+        
+        console.log('🎨 RFP results display completed successfully');
+        
+    } catch (error) {
+        console.error('❌ Error displaying RFP results:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Display Error',
+            text: 'Error displaying results: ' + error.message,
+            confirmButtonColor: '#007bff'
+        });
+    }
+}
+
+function getDocumentTypeName(type) {
+    const names = {
+        'RFP': 'Request for Proposal',
+        'RFI': 'Request for Information', 
+        'RFQ': 'Request for Quote'
+    };
+    return names[type] || type;
+}
+
+function downloadRFPDocument() {
+    console.log('📄 Download button clicked');
+    
+    if (!currentRFPData) {
+        console.error('❌ No RFP data available for download');
+        Swal.fire({
+            icon: 'error',
+            title: 'No Document Found',
+            text: 'Please generate an RFP document first.',
+            confirmButtonColor: '#007bff'
+        });
+        return;
+    }
+    
+    console.log('📄 Starting PDF download for:', currentRFPData.project_title);
+    
+    try {
+        const docType = currentRFPData.document_type;
+        const projectTitle = currentRFPData.project_title.replace(/[^a-z0-9\s]/gi, '_').toLowerCase().replace(/\s+/g, '_');
+        const timestamp = new Date().toISOString().split('T')[0];
+        const filename = `${docType}_${projectTitle}_${timestamp}.pdf`;
+        
+        console.log('📄 Creating PDF:', filename);
+        
+        // Create PDF using jsPDF
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF();
+        
+        // Set up PDF formatting
+        pdf.setFontSize(20);
+        pdf.setTextColor(0, 123, 255);
+        pdf.text(`${currentRFPData.document_type}: ${currentRFPData.project_title}`, 20, 30);
+        
+        // Document info
+        pdf.setFontSize(12);
+        pdf.setTextColor(0, 0, 0);
+        let yPosition = 50;
+        
+        pdf.text(`Document Type: ${currentRFPData.document_type} - ${getDocumentTypeName(currentRFPData.document_type)}`, 20, yPosition);
+        yPosition += 10;
+        pdf.text(`Generated: ${new Date().toLocaleDateString()}`, 20, yPosition);
+        yPosition += 10;
+        pdf.text(`Processing Time: ${currentRFPData.processing_time.toFixed(1)} seconds`, 20, yPosition);
+        yPosition += 10;
+        pdf.text(`Sections: ${currentRFPData.generation_metadata.sections_count} professional sections`, 20, yPosition);
+        yPosition += 10;
+        pdf.text(`Word Count: ${currentRFPData.final_document.split(' ').length} words`, 20, yPosition);
+        yPosition += 20;
+        
+        // Executive Summary
+        pdf.setFontSize(16);
+        pdf.setTextColor(0, 123, 255);
+        pdf.text('Executive Summary', 20, yPosition);
+        yPosition += 15;
+        
+        pdf.setFontSize(10);
+        pdf.setTextColor(0, 0, 0);
+        const summaryText = `This ${currentRFPData.document_type} has been professionally generated with comprehensive requirements analysis, industry benchmarks, and detailed specifications for ${currentRFPData.project_title}.`;
+        const splitSummary = pdf.splitTextToSize(summaryText, 170);
+        pdf.text(splitSummary, 20, yPosition);
+        yPosition += splitSummary.length * 5 + 10;
+        
+        // Project Analysis
+        pdf.setFontSize(16);
+        pdf.setTextColor(0, 123, 255);
+        pdf.text('Project Analysis', 20, yPosition);
+        yPosition += 15;
+        
+        pdf.setFontSize(10);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(`Project Category: ${currentRFPData.requirements_analysis.project_category}`, 20, yPosition);
+        yPosition += 8;
+        pdf.text(`Complexity Level: ${currentRFPData.requirements_analysis.complexity_level}`, 20, yPosition);
+        yPosition += 12;
+        
+        pdf.text('Key Challenges:', 20, yPosition);
+        yPosition += 8;
+        currentRFPData.requirements_analysis.key_challenges.forEach(challenge => {
+            const challengeText = pdf.splitTextToSize(`• ${challenge}`, 160);
+            pdf.text(challengeText, 25, yPosition);
+            yPosition += challengeText.length * 5 + 2;
+        });
+        yPosition += 10;
+        
+        // Evaluation Framework
+        if (yPosition > 250) {
+            pdf.addPage();
+            yPosition = 30;
+        }
+        
+        pdf.setFontSize(16);
+        pdf.setTextColor(0, 123, 255);
+        pdf.text('Evaluation Framework', 20, yPosition);
+        yPosition += 15;
+        
+        pdf.setFontSize(10);
+        pdf.setTextColor(0, 0, 0);
+        currentRFPData.requirements_analysis.evaluation_factors.forEach(factor => {
+            pdf.text(`${factor.factor}: ${factor.weight}`, 20, yPosition);
+            yPosition += 8;
+        });
+        yPosition += 10;
+        
+        // Market Intelligence
+        if (yPosition > 230) {
+            pdf.addPage();
+            yPosition = 30;
+        }
+        
+        pdf.setFontSize(16);
+        pdf.setTextColor(0, 123, 255);
+        pdf.text('Market Intelligence', 20, yPosition);
+        yPosition += 15;
+        
+        pdf.setFontSize(10);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(`Industry Timeline: ${currentRFPData.industry_benchmarks.typical_timeline}`, 20, yPosition);
+        yPosition += 8;
+        pdf.text(`Budget Guidelines: ${currentRFPData.industry_benchmarks.budget_benchmarks}`, 20, yPosition);
+        yPosition += 12;
+        
+        pdf.text('Current Market Trends:', 20, yPosition);
+        yPosition += 8;
+        currentRFPData.industry_benchmarks.market_trends.forEach(trend => {
+            const trendText = pdf.splitTextToSize(`• ${trend}`, 160);
+            pdf.text(trendText, 25, yPosition);
+            yPosition += trendText.length * 5 + 2;
+        });
+        
+        // Footer
+        const pageCount = pdf.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            pdf.setPage(i);
+            pdf.setFontSize(8);
+            pdf.setTextColor(128, 128, 128);
+            pdf.text('Generated by ProcureAI - AI-Powered Procurement Intelligence', 20, 285);
+            pdf.text(`Page ${i} of ${pageCount}`, 170, 285);
+        }
+        
+        // Save PDF
+        pdf.save(filename);
+        console.log('✅ PDF download initiated:', filename);
+        
+        // Show success message with SweetAlert2
+        Swal.fire({
+            icon: 'success',
+            title: 'Document Downloaded!',
+            html: `
+                <div style="text-align: left; margin: 15px 0;">
+                    <p><strong>File:</strong> ${filename}</p>
+                    <p><strong>Format:</strong> Professional PDF</p>
+                    <p><strong>Sections:</strong> ${currentRFPData.generation_metadata.sections_count}</p>
+                    <p><strong>Location:</strong> Downloads folder</p>
+                </div>
+            `,
+            confirmButtonColor: '#007bff',
+            confirmButtonText: 'Great!'
+        });
+        
+        // Visual feedback
+        const downloadBtn = event?.target;
+        if (downloadBtn) {
+            const originalText = downloadBtn.innerHTML;
+            downloadBtn.innerHTML = '✅ Downloaded!';
+            downloadBtn.style.background = '#28a745';
+            setTimeout(() => {
+                downloadBtn.innerHTML = originalText;
+                downloadBtn.style.background = '';
+            }, 2000);
+        }
+        
+    } catch (error) {
+        console.error('❌ PDF download failed:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Download Failed',
+            text: 'Failed to generate PDF. Please try again.',
+            confirmButtonColor: '#007bff'
+        });
+    }
+}
+
+function regenerateRFP() {
+    if (!currentRFPData) {
+        switchRFPStep(1);
+        return;
+    }
+    
+    Swal.fire({
+        title: 'Regenerate Document?',
+        text: 'Generate a new document with the same requirements?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#007bff',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, Generate New',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+        // Extract original request data and regenerate
+        const requestData = {
+            document_type: currentRFPData.document_type,
+            project_title: currentRFPData.project_title,
+            description: document.getElementById('rfp-description').value,
+            requirements: Array.from(document.querySelectorAll('.requirement-input'))
+                .map(input => input.value.trim()).filter(val => val),
+            budget_range: document.getElementById('rfp-budget-range').value || null,
+            timeline: document.getElementById('rfp-timeline').value || null,
+            industry: document.getElementById('rfp-industry').value || null
+        };
+        
+            switchRFPStep(2);
+            generateRFPDocument(requestData).catch(error => {
+                console.error('Regeneration failed:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Regeneration Failed',
+                    text: 'Document regeneration failed. Please try again.',
+                    confirmButtonColor: '#007bff'
+                });
+                switchRFPStep(3);
+            });
+        }
+    });
+}
+
+function editRFPRequirements() {
+    switchRFPStep(1);
+}
+
+// Category Search with Dubai as default location
+function searchCategory(category) {
+    switchPage('supplier-discovery');
+    setTimeout(() => {
+        document.getElementById('query').value = category;
+        document.getElementById('location').value = 'Dubai';
+        document.getElementById('query').focus();
+    }, 100);
+}
+
+// Sidebar functionality
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const mainContent = document.querySelector('.main-content');
+    const toggleIcon = document.getElementById('sidebar-toggle-icon');
+    
+    sidebar.classList.toggle('collapsed');
+    mainContent.classList.toggle('sidebar-collapsed');
+    
+    if (sidebar.classList.contains('collapsed')) {
+        toggleIcon.textContent = '→';
+    } else {
+        toggleIcon.textContent = '←';
+    }
+}
+
+function toggleMobileSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    sidebar.classList.toggle('mobile-open');
+}
+
 // Initialize page on load
 document.addEventListener('DOMContentLoaded', function() {
     // Show dashboard by default
     switchPage('dashboard');
+    
+    // Initialize RFP functionality
+    initializeRFPGeneration();
 });

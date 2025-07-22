@@ -558,6 +558,68 @@ body {
     color: white !important;
 }
 
+/* RFP Generation Steps */
+.step-navigation {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: var(--space-xl);
+}
+
+.step-navigation .step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: var(--space-md);
+    margin: 0 var(--space-lg);
+    border-radius: var(--radius-lg);
+    background: var(--bg-secondary);
+    color: var(--text-muted);
+    transition: all 0.3s ease;
+    min-width: 120px;
+}
+
+.step-navigation .step.active {
+    background: var(--gradient-primary);
+    color: white;
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.step-navigation .step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--bg-tertiary);
+    color: white;
+    font-weight: bold;
+    margin-bottom: var(--space-sm);
+}
+
+.step-navigation .step.active .step-number {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.step-navigation .step-title {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+}
+
+/* Step Content */
+.step-content {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.step-content.active {
+    display: block;
+    opacity: 1;
+}
+
 /* Loading Spinner */
 .spinner {
     width: 40px;

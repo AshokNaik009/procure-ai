@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 from agent_graph import procurement_agent
 from competitive_service import CompetitiveIntelligenceService
+from rfp_service import RFPGenerationService
 
 # Load environment variables
 load_dotenv()
@@ -20,6 +21,7 @@ app = FastAPI(title="Procurement Intelligence System", version="1.0.0")
 
 # Initialize services
 competitive_service = CompetitiveIntelligenceService()
+rfp_service = RFPGenerationService()
 
 # Configuration
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -127,6 +129,38 @@ class BenchmarkResult(BaseModel):
     market_insights: List[str] = []
     processing_time: float
 
+# RFP Generation Models
+class RFPGenerationRequest(BaseModel):
+    document_type: str = Field(..., pattern="^(RFP|RFI|RFQ)$", description="Type of document to generate")
+    project_title: str = Field(..., min_length=3, max_length=200, description="Project title")
+    description: str = Field(..., min_length=10, max_length=2000, description="Project description")
+    requirements: List[str] = Field(..., min_items=1, max_items=20, description="Project requirements")
+    budget_range: Optional[str] = Field(None, description="Budget range")
+    timeline: Optional[str] = Field(None, description="Project timeline")
+    industry: Optional[str] = Field(None, description="Industry sector")
+    company_size: Optional[str] = Field(None, description="Company size")
+    evaluation_criteria: Optional[List[str]] = Field(None, description="Custom evaluation criteria")
+
+class GenerationMetadata(BaseModel):
+    generated_at: str
+    sections_count: int
+    document_length: int
+    complexity_score: float
+    fallback_mode: Optional[bool] = None
+
+class RFPGenerationResponse(BaseModel):
+    document_type: str
+    project_title: str
+    requirements_analysis: Dict[str, Any]
+    industry_benchmarks: Dict[str, Any]
+    sections: Dict[str, str]
+    final_document: str
+    generation_metadata: GenerationMetadata
+    processing_time: float
+
+class DocumentTemplatesResponse(BaseModel):
+    templates: Dict[str, Dict[str, Any]]
+
 # Mount static files
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
 
@@ -183,6 +217,47 @@ async def analyze_competitive_benchmark(request: CompetitiveBenchmarkRequest):
     except Exception as e:
         print(f"❌ Competitive benchmark analysis failed: {e}")
         raise HTTPException(status_code=500, detail=f"Competitive analysis failed: {str(e)}")
+
+# RFP Generation Endpoints
+@app.post("/api/v1/rfp/generate", response_model=RFPGenerationResponse)
+async def generate_rfp_document(request: RFPGenerationRequest):
+    """Generate AI-powered RFP/RFI/RFQ documents"""
+    try:
+        print(f"📝 Starting {request.document_type} generation for: {request.project_title}")
+        
+        # Generate document using RFP service
+        result = await rfp_service.generate_document(request)
+        
+        return RFPGenerationResponse(**result)
+        
+    except Exception as e:
+        print(f"❌ RFP generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"RFP generation failed: {str(e)}")
+
+@app.get("/api/v1/rfp/templates", response_model=DocumentTemplatesResponse)
+async def get_rfp_templates():
+    """Get available RFP/RFI/RFQ document templates"""
+    try:
+        templates = await rfp_service.get_document_templates()
+        return DocumentTemplatesResponse(**templates)
+        
+    except Exception as e:
+        print(f"❌ Template retrieval failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Template retrieval failed: {str(e)}")
+
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "services": {
+            "competitive_intelligence": "active",
+            "rfp_generation": "active",
+            "procurement_agent": "active"
+        }
+    }
 
 # Additional endpoints and health checks can be added here
 
