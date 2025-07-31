@@ -342,16 +342,105 @@ function displayResults(data) {
                 `<span class="cert-badge">${cert}</span>`
             ).join('');
             
-            const supplierCard = `
-                <div class="supplier-card">
-                    <div class="supplier-name">${supplier.name}</div>
-                    <div class="supplier-location">📍 ${supplier.location}</div>
-                    <div class="supplier-description">${supplier.description.substring(0, 150)}...</div>
-                    <div class="confidence-score ${confidenceClass}">
-                        Confidence: ${(supplier.confidence_score * 100).toFixed(0)}%
+            // Registration status removed (OpenCorporates integration removed)
+            
+            // Company logo
+            const logoHtml = supplier.logo_url ? 
+                `<img src="${supplier.logo_url}" alt="${supplier.name} logo" style="width: 32px; height: 32px; border-radius: 4px; object-fit: contain; margin-right: var(--space-sm);" onerror="this.style.display='none'">` : 
+                `<div style="width: 32px; height: 32px; background: var(--gradient-primary); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: var(--space-sm); font-size: 14px;">${supplier.name.charAt(0)}</div>`;
+            
+            // Financial health badge
+            let financialBadge = '';
+            if (supplier.financial_data) {
+                const health = supplier.financial_data.financial_health_score || 50;
+                const healthColor = health >= 70 ? '#28a745' : health >= 50 ? '#ffc107' : '#dc3545';
+                const marketCap = supplier.financial_data.market_cap;
+                const sector = supplier.financial_data.sector;
+                
+                financialBadge = `
+                    <div style="margin-top: var(--space-sm); padding: var(--space-xs); background: rgba(40, 167, 69, 0.1); border-radius: var(--radius-sm); border-left: 3px solid ${healthColor};">
+                        <div style="font-size: var(--font-size-sm); font-weight: 600; color: ${healthColor};">
+                            💰 Public Company (${supplier.financial_data.ticker})
+                        </div>
+                        <div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px;">
+                            ${sector || 'Unknown Sector'} • Health: ${health}/100
+                            ${marketCap ? ` • $${(marketCap / 1000000000).toFixed(1)}B` : ''}
+                        </div>
                     </div>
+                `;
+            }
+            
+            // Risk assessment badge
+            let riskBadge = '';
+            if (supplier.risk_assessment) {
+                const risk = supplier.risk_assessment.risk_score || 50;
+                const riskColor = risk <= 30 ? '#28a745' : risk <= 60 ? '#ffc107' : '#dc3545';
+                const riskLabel = risk <= 30 ? 'Low Risk' : risk <= 60 ? 'Medium Risk' : 'High Risk';
+                const domainAge = supplier.risk_assessment.domain_age_years;
+                
+                riskBadge = `
+                    <div style="margin-top: var(--space-sm); padding: var(--space-xs); background: rgba(40, 167, 69, 0.1); border-radius: var(--radius-sm); border-left: 3px solid ${riskColor};">
+                        <div style="font-size: var(--font-size-sm); font-weight: 600; color: ${riskColor};">
+                            ⚠️ ${riskLabel} (${risk}/100)
+                        </div>
+                        ${domainAge ? `<div style="font-size: var(--font-size-xs); color: var(--text-muted); margin-top: 2px;">Domain: ${domainAge} years old</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            // Web intelligence badges
+            let webIntelBadges = '';
+            if (supplier.web_intelligence) {
+                const intel = supplier.web_intelligence;
+                let badges = [];
+                
+                if (intel.founded_year) {
+                    const yearsActive = 2025 - intel.founded_year;
+                    badges.push(`<span class="intel-badge" style="background: #e3f2fd; color: #1976d2;">📅 Est. ${intel.founded_year} (${yearsActive}y)</span>`);
+                }
+                
+                if (intel.team_size_indicators && intel.team_size_indicators.length > 0) {
+                    const maxSize = Math.max(...intel.team_size_indicators);
+                    badges.push(`<span class="intel-badge" style="background: #f3e5f5; color: #7b1fa2;">👥 ${maxSize}+ employees</span>`);
+                }
+                
+                if (intel.social_media && Object.keys(intel.social_media).length > 0) {
+                    const socialCount = Object.keys(intel.social_media).length;
+                    badges.push(`<span class="intel-badge" style="background: #e8f5e8; color: #388e3c;">📱 ${socialCount} social media</span>`);
+                }
+                
+                if (intel.technology_stack && intel.technology_stack.length > 0) {
+                    badges.push(`<span class="intel-badge" style="background: #fff3e0; color: #f57c00;">⚙️ ${intel.technology_stack.length} tech stack</span>`);
+                }
+                
+                if (badges.length > 0) {
+                    webIntelBadges = `<div style="margin-top: var(--space-sm); display: flex; flex-wrap: wrap; gap: var(--space-xs);">${badges.join('')}</div>`;
+                }
+            }
+            
+            const supplierCard = `
+                <div class="supplier-card" style="position: relative; overflow: visible;">
+                    <div style="display: flex; align-items: center; margin-bottom: var(--space-sm);">
+                        ${logoHtml}
+                        <div>
+                            <div class="supplier-name">${supplier.name}</div>
+                            <div class="supplier-location">📍 ${supplier.location}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="supplier-description">${supplier.description.substring(0, 150)}...</div>
+                    
+                    <div class="confidence-score ${confidenceClass}" style="margin-top: var(--space-sm);">
+                        Confidence: ${(supplier.confidence_score * 100).toFixed(0)}% 
+                        ${supplier.confidence_score >= 0.8 ? '🟢' : supplier.confidence_score >= 0.6 ? '🟡' : '🔴'}
+                    </div>
+                    
                     ${supplier.rating ? `<div style="margin-top: var(--space-sm); color: var(--text-secondary);">⭐ Rating: ${supplier.rating.toFixed(1)}</div>` : ''}
                     ${certifications ? `<div class="certifications" style="margin-top: var(--space-sm);">${certifications}</div>` : ''}
+                    ${webIntelBadges}
+                    ${financialBadge}
+                    ${riskBadge}
+                    
                     ${supplier.website ? `<div style="margin-top: var(--space-sm);"><a href="${supplier.website}" target="_blank" style="color: var(--primary-blue); text-decoration: none;">🔗 Visit Website</a></div>` : ''}
                 </div>
             `;

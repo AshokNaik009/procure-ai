@@ -729,6 +729,16 @@ body {
     margin-bottom: var(--space-xs);
 }
 
+.intel-badge {
+    display: inline-block;
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    margin-right: var(--space-xs);
+    margin-bottom: var(--space-xs);
+}
+
 /* Market Insights */
 .market-insights {
     margin-top: var(--space-xl);
